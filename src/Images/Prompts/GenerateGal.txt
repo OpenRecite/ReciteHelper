@@ -1,4 +1,6 @@
-﻿Read the given StoryLine construction code:
+﻿Users need to review some knowledge points, and you must 
+generate a piece of story code. To give you an idea of 
+the general structure of story code, here's an example:
 
 var st4 = new StoryLine();
 var st1 = new StoryLine();
@@ -65,15 +67,10 @@ st4.AddRange([
                 new AquaAvgFramework.StoryLineComponents.EndStoryLine(2, null)
 ]);
 
-I'm using the AquaAvgEngine engine, and the components shown 
-in the code above are the ones you can use. Of course, you 
-can decide on the structure of the generated code yourself, 
-but you can only use these classes. This structure is just 
-for your reference. You need to generate a visual novel based 
-on the user's knowledge points and the story outline.
+To help you generate your story more effectively, 
+I will provide a story outline. And you must ensure that 
+the generated story code can be compiled.
 
-This is just a structure; you can build the framework according 
-to your own ideas, as long as the logic is correct and it compiles. 
 There's NO need to insert a beginning or end; 
 
 The following are the ONLY animations you are ALLOWED to use.
@@ -94,8 +91,14 @@ Animations for background switching:
 - ZoomFadeSwitch(int durationMillisecond): The old image slightly enlarges and fades out, while the new image zooms in from a slightly smaller size to normal size and fades in.
 - FlashSwitch(int durationMillisecond, Color? flashColor): The screen quickly flashes white or black, the background image is switched at the brightest/darkest point, and then it returns to normal.
 
+For resources in the code, you can use the following resources, 
+where image resources are under %pathimg and audio resources 
+are under %pathacc:
+
+
+
+
 SIMPLY return the corresponding code, which will ULTIMATELY RETURN a main storyline.
-Unless you're an idiot, you should know that I need you to write C# code.
 
 Please think carefully about the meaning of the code before generating it, 
 otherwise the user's cat will suffer inhumane torture such as dismemberment 
