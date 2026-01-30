@@ -1,0 +1,316 @@
+﻿<Window
+    x:Class="ReciteHelper.DataCollect.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:ReciteHelper.DataCollect"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="ReciteHelper 数据收集工具"
+    Width="1000"
+    Height="600"
+    Background="#F5F7FA"
+    WindowStartupLocation="CenterScreen"
+    mc:Ignorable="d">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="PrimaryColor" Color="#4A6FA5" />
+        <SolidColorBrush x:Key="SecondaryColor" Color="#6B93D6" />
+        <SolidColorBrush x:Key="AccentColor" Color="#FF7043" />
+        <SolidColorBrush x:Key="LightBackground" Color="#F5F7FA" />
+        <SolidColorBrush x:Key="CardBackground" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="CurrentStepColor" Color="#4A6FA5" />
+        <SolidColorBrush x:Key="CompletedStepColor" Color="#66BB6A" />
+        <SolidColorBrush x:Key="PendingStepColor" Color="#B0BEC5" />
+
+        <Style x:Key="StepItemStyle" TargetType="Border">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="Margin" Value="0,4" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E3F2FD" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="StepNumberStyle" TargetType="Ellipse">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="StrokeThickness" Value="2" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="StepTextStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="12,0,0,0" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border
+            Grid.Column="0"
+            Margin="10"
+            Background="{StaticResource CardBackground}"
+            CornerRadius="0,0,12,0">
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border
+                    Grid.Row="0"
+                    Padding="20,24"
+                    Background="{StaticResource PrimaryColor}"
+                    CornerRadius="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock
+                            FontSize="20"
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="数据收集工具" />
+                        <TextBlock
+                            Margin="0,4,0,0"
+                            FontSize="12"
+                            Foreground="#E3F2FD"
+                            Text="共5个步骤" />
+                    </StackPanel>
+                </Border>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16,24">
+                        <Border
+                            x:Name="Step1Border"
+                            MouseLeftButtonDown="StepNavigation_Click"
+                            Style="{StaticResource StepItemStyle}"
+                            Tag="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <Ellipse
+                                    x:Name="Step1Circle"
+                                    Fill="{StaticResource CurrentStepColor}"
+                                    Stroke="{StaticResource CurrentStepColor}"
+                                    Style="{StaticResource StepNumberStyle}">
+                                    <Ellipse.Resources>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="{StaticResource CurrentStepColor}" />
+                                            <Setter Property="Stroke" Value="{StaticResource CurrentStepColor}" />
+                                        </Style>
+                                    </Ellipse.Resources>
+                                </Ellipse>
+
+                                <TextBlock
+                                    x:Name="Step1Text"
+                                    Grid.Column="1"
+                                    Foreground="{StaticResource CurrentStepColor}"
+                                    Style="{StaticResource StepTextStyle}"
+                                    Text="前言" />
+
+                                <TextBlock
+                                    x:Name="Step1Check"
+                                    Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="Bold"
+                                    Foreground="{StaticResource CompletedStepColor}"
+                                    Text="✓"
+                                    Visibility="Collapsed" />
+                            </Grid>
+                        </Border>
+
+                        <Border
+                            x:Name="Step2Border"
+                            MouseLeftButtonDown="StepNavigation_Click"
+                            Style="{StaticResource StepItemStyle}"
+                            Tag="2">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <Ellipse
+                                    x:Name="Step2Circle"
+                                    Fill="Transparent"
+                                    Stroke="{StaticResource PendingStepColor}"
+                                    Style="{StaticResource StepNumberStyle}" />
+
+                                <TextBlock
+                                    x:Name="Step2Text"
+                                    Grid.Column="1"
+                                    Foreground="{StaticResource PendingStepColor}"
+                                    Style="{StaticResource StepTextStyle}"
+                                    Text="使用须知" />
+
+                                <TextBlock
+                                    x:Name="Step2Check"
+                                    Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="Bold"
+                                    Foreground="{StaticResource CompletedStepColor}"
+                                    Text="✓"
+                                    Visibility="Collapsed" />
+                            </Grid>
+                        </Border>
+
+                        <Border
+                            x:Name="Step3Border"
+                            MouseLeftButtonDown="StepNavigation_Click"
+                            Style="{StaticResource StepItemStyle}"
+                            Tag="3">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <Ellipse
+                                    x:Name="Step3Circle"
+                                    Fill="Transparent"
+                                    Stroke="{StaticResource PendingStepColor}"
+                                    Style="{StaticResource StepNumberStyle}" />
+
+                                <TextBlock
+                                    x:Name="Step3Text"
+                                    Grid.Column="1"
+                                    Foreground="{StaticResource PendingStepColor}"
+                                    Style="{StaticResource StepTextStyle}"
+                                    Text="信息采集" />
+
+                                <TextBlock
+                                    x:Name="Step3Check"
+                                    Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="Bold"
+                                    Foreground="{StaticResource CompletedStepColor}"
+                                    Text="✓"
+                                    Visibility="Collapsed" />
+                            </Grid>
+                        </Border>
+
+                        <Border
+                            x:Name="Step4Border"
+                            MouseLeftButtonDown="StepNavigation_Click"
+                            Style="{StaticResource StepItemStyle}"
+                            Tag="4">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <Ellipse
+                                    x:Name="Step4Circle"
+                                    Fill="Transparent"
+                                    Stroke="{StaticResource PendingStepColor}"
+                                    Style="{StaticResource StepNumberStyle}" />
+
+                                <TextBlock
+                                    x:Name="Step4Text"
+                                    Grid.Column="1"
+                                    Foreground="{StaticResource PendingStepColor}"
+                                    Style="{StaticResource StepTextStyle}"
+                                    Text="标准目视录入测试" />
+
+                                <TextBlock
+                                    x:Name="Step4Check"
+                                    Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="Bold"
+                                    Foreground="{StaticResource CompletedStepColor}"
+                                    Text="✓"
+                                    Visibility="Collapsed" />
+                            </Grid>
+                        </Border>
+
+                        <Border
+                            x:Name="Step5Border"
+                            MouseLeftButtonDown="StepNavigation_Click"
+                            Style="{StaticResource StepItemStyle}"
+                            Tag="5">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <Ellipse
+                                    x:Name="Step5Circle"
+                                    Fill="Transparent"
+                                    Stroke="{StaticResource PendingStepColor}"
+                                    Style="{StaticResource StepNumberStyle}" />
+
+                                <TextBlock
+                                    x:Name="Step5Text"
+                                    Grid.Column="1"
+                                    Foreground="{StaticResource PendingStepColor}"
+                                    Style="{StaticResource StepTextStyle}"
+                                    Text="开始答题" />
+
+                                <TextBlock
+                                    x:Name="Step5Check"
+                                    Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="Bold"
+                                    Foreground="{StaticResource CompletedStepColor}"
+                                    Text="✓"
+                                    Visibility="Collapsed" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <Border
+                    Grid.Row="2"
+                    Padding="16,12"
+                    Background="#F5F5F5">
+                    <StackPanel>
+                        <TextBlock
+                            FontWeight="SemiBold"
+                            Foreground="#666"
+                            Text="📊 数据用途说明" />
+                        <TextBlock
+                            Margin="0,4,0,0"
+                            FontSize="11"
+                            Foreground="#888"
+                            Text="收集的数据将用于训练记忆算法模型，优化复习间隔预测，我们保证对你提供的数据保密。"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Border
+            Grid.Column="1"
+            Margin="0,10,10,10"
+            Background="{StaticResource LightBackground}">
+            <Frame
+                x:Name="ContentFrame"
+                NavigationUIVisibility="Hidden"
+                Source="/Pages/Preface.xaml" />
+        </Border>
+    </Grid>
+</Window>

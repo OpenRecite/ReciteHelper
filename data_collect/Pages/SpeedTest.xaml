@@ -1,0 +1,267 @@
+﻿<Page
+    x:Class="ReciteHelper.DataCollect.Pages.SpeedTest"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:ReciteHelper.DataCollect.Pages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="SpeedTest"
+    d:DesignHeight="600"
+    d:DesignWidth="800"
+    Background="White"
+    Loaded="Page_Loaded"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <SolidColorBrush x:Key="PrimaryColor" Color="#4A6FA5" />
+        <SolidColorBrush x:Key="SecondaryColor" Color="#6B93D6" />
+        <SolidColorBrush x:Key="AccentColor" Color="#FF7043" />
+        <SolidColorBrush x:Key="CurrentStepColor" Color="#4A6FA5" />
+        <SolidColorBrush x:Key="CompletedStepColor" Color="#66BB6A" />
+        <SolidColorBrush x:Key="PendingStepColor" Color="#B0BEC5" />
+    </Page.Resources>
+
+    <Grid>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="40,30">
+
+                <StackPanel Margin="0,0,0,25">
+                    <Viewbox
+                        MaxHeight="40"
+                        HorizontalAlignment="Center"
+                        Stretch="Uniform">
+                        <TextBlock FontFamily="华文中宋" Text="标准目视录入测试" />
+                    </Viewbox>
+                    <TextBlock
+                        Margin="0,5,0,0"
+                        HorizontalAlignment="Center"
+                        FontFamily="Times New Roman"
+                        FontSize="16"
+                        Foreground="#666666"
+                        Text="Typing Speed Test" />
+                </StackPanel>
+
+                <!--  说明区域  -->
+                <Border
+                    Margin="0,0,0,25"
+                    Padding="20,15"
+                    Background="#F0F7FF"
+                    BorderBrush="#4A6FA5"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel>
+                        <TextBlock
+                            Margin="0,0,0,8"
+                            FontFamily="SimSun"
+                            FontSize="14"
+                            FontWeight="Bold"
+                            Text="📝 测试说明" />
+                        <TextBlock
+                            FontFamily="SimSun"
+                            FontSize="13"
+                            LineHeight="22"
+                            TextWrapping="Wrap"><Run Text="此部分为" /><Run Text=" " /><Run Foreground="#FF4A6FA5" Text="练习环节" /><Run Text=" " /><Run Text="，旨在让您熟悉工具的操作方式。请将下方显示的文章原样输入到下方文本框中，我们会计算您的打字速度。" /><LineBreak /><LineBreak /><Run Text="重要提示：" /><Run Text=" " /><Run Language="zh-cn" Text="本环节仅为测试，" /><Run Text="本次测试数据" /><Run Text=" " /><Run Foreground="#FF4A6FA5" Text="不会被记录" /><Run Text=" " /><Run Text="到正式" /><Run Language="zh-cn" Text="数据" /><Run Text="中，请您以最自然、放松的状态输入，无需刻意追求" /><Run Language="zh-cn" Text="输入" /><Run Text="速度" /><Run Language="zh-cn" Text="，但请确保准确" /><Run Text="。" /></TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <Border
+                    Margin="0,0,0,15"
+                    Padding="20,15"
+                    Background="#FAFAFA"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1"
+                    CornerRadius="6">
+                    <StackPanel>
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            FontFamily="SimSun"
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            Text="测试文章 (请原样输入下方内容，继续向下滚动可找到输入区域)" />
+                        <Border
+                            Height="1"
+                            Margin="0,0,0,12"
+                            Background="#E0E0E0" />
+                        <ScrollViewer
+                            MaxHeight="200"
+                            Padding="5"
+                            VerticalScrollBarVisibility="Auto">
+                            <TextBlock
+                                x:Name="TestArticleText"
+                                FontFamily="SimSun"
+                                FontSize="13"
+                                LineHeight="20"
+                                TextWrapping="Wrap" />
+                        </ScrollViewer>
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            HorizontalAlignment="Right"
+                            FontFamily="SimSun"
+                            FontSize="11"
+                            Foreground="#666666"
+                            Text="文章长度：约300字符" />
+                    </StackPanel>
+                </Border>
+
+                <!--  打字区域  -->
+                <Border
+                    Padding="20,15"
+                    Background="White"
+                    BorderBrush="#E0E0E0"
+                    BorderThickness="1"
+                    CornerRadius="6">
+                    <StackPanel>
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            FontFamily="SimSun"
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            Text="您的输入区域" />
+                        <Border
+                            Height="1"
+                            Margin="0,0,0,12"
+                            Background="#E0E0E0" />
+
+                        <TextBox
+                            x:Name="TypingTextBox"
+                            MinHeight="120"
+                            MaxHeight="200"
+                            Padding="10"
+                            AcceptsReturn="True"
+                            BorderBrush="#CCCCCC"
+                            BorderThickness="1"
+                            FontFamily="SimSun"
+                            FontSize="13"
+                            IsEnabled="False"
+                            PreviewKeyDown="TypingTextBox_PreviewKeyDown"
+                            TextChanged="TypingTextBox_TextChanged"
+                            TextWrapping="Wrap"
+                            VerticalScrollBarVisibility="Auto">
+                            <TextBox.Style>
+                                <Style TargetType="TextBox">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="TextBox">
+                                                <Border
+                                                    Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    CornerRadius="4">
+                                                    <ScrollViewer x:Name="PART_ContentHost" />
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </TextBox.Style>
+                        </TextBox>
+
+                        <Grid Margin="0,15,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock
+                                    FontFamily="SimSun"
+                                    FontSize="11"
+                                    Foreground="#666666"
+                                    Text="已输入字符" />
+                                <TextBlock
+                                    x:Name="CharCountText"
+                                    FontFamily="Times New Roman"
+                                    FontSize="18"
+                                    FontWeight="Bold"
+                                    Foreground="#4A6FA5"
+                                    Text="0" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1">
+                                <TextBlock
+                                    FontFamily="SimSun"
+                                    FontSize="11"
+                                    Foreground="#666666"
+                                    Text="打字速度" />
+                                <TextBlock
+                                    x:Name="SpeedText"
+                                    FontFamily="Times New Roman"
+                                    FontSize="18"
+                                    FontWeight="Bold"
+                                    Foreground="#4A6FA5"
+                                    Text="0 字符/分" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock
+                                    FontFamily="SimSun"
+                                    FontSize="11"
+                                    Foreground="#666666"
+                                    Text="用时" />
+                                <TextBlock
+                                    x:Name="TimeText"
+                                    FontFamily="Times New Roman"
+                                    FontSize="18"
+                                    FontWeight="Bold"
+                                    Foreground="#4A6FA5"
+                                    Text="00:00" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="3">
+                                <TextBlock
+                                    FontFamily="SimSun"
+                                    FontSize="11"
+                                    Foreground="#666666"
+                                    Text="准确率" />
+                                <TextBlock
+                                    x:Name="AccuracyText"
+                                    FontFamily="Times New Roman"
+                                    FontSize="18"
+                                    FontWeight="Bold"
+                                    Foreground="#4A6FA5"
+                                    Text="100%" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Grid Margin="0,25,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="15" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button
+                        x:Name="StartStopButton"
+                        Grid.Column="3"
+                        Padding="30,12"
+                        Background="#4A6FA5"
+                        Click="StartStopButton_Click"
+                        Content="开始测试"
+                        Cursor="Hand"
+                        FontSize="14"
+                        FontWeight="Bold"
+                        Foreground="White">
+                        <Button.Style>
+                            <Style BasedOn="{StaticResource {x:Type Button}}" TargetType="Button" />
+                        </Button.Style>
+                    </Button>
+                </Grid>
+
+                <TextBlock
+                    x:Name="CompletionMessage"
+                    Margin="0,20,0,0"
+                    HorizontalAlignment="Center"
+                    FontFamily="SimSun"
+                    FontSize="12"
+                    Foreground="#666666"
+                    TextWrapping="Wrap"
+                    Visibility="Collapsed" />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

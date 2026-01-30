@@ -1,0 +1,100 @@
+﻿<Page
+    x:Class="ReciteHelper.DataCollect.Pages.Preface"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:ReciteHelper.DataCollect.Pages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="Preface"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    Background="White"
+    Loaded="Page_Loaded"
+    mc:Ignorable="d">
+
+    <Grid>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="60,40">
+
+                <Viewbox
+                    MaxHeight="40"
+                    Margin="0,0,0,10"
+                    HorizontalAlignment="Center"
+                    Stretch="Uniform">
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontFamily="华文中宋"
+                        Text="前言" />
+                </Viewbox>
+
+                <TextBlock
+                    Margin="0,0,0,30"
+                    HorizontalAlignment="Center"
+                    FontFamily="Times New Roman"
+                    FontSize="18"
+                    Text="Preface" />
+
+                <StackPanel>
+                    <TextBlock
+                        Margin="0,0,0,20"
+                        FontSize="14"
+                        LineHeight="28"
+                        TextWrapping="Wrap">
+                        <Run FontFamily="SimSun" Text="     欢迎使用 " />
+                        <Run
+                            FontFamily="Times New Roman"
+                            FontWeight="SemiBold"
+                            Text="ReciteHelper" />
+                        <Run FontFamily="SimSun" Text=" 数据收集工具。本工具是我们为研究和优化智能化记忆算法而专门开发的实验平台。其核心目标是：通过收集真实、细粒度的学习行为数据，构建更精准的个性化记忆模型，让未来的复习计划能够智能地适应每个人的记忆节奏。" />
+                    </TextBlock>
+
+                    <TextBlock
+                        Margin="0,0,0,20"
+                        FontSize="14"
+                        LineHeight="28"
+                        TextWrapping="Wrap">
+                        <Run FontFamily="SimSun" Text="     在接下来的流程中，我们将请您完成一些学习任务。工具会记录答题时间、输入内容等过程性数据。这些宝贵的数据将仅用于分析和训练优化的" />
+                        <Run
+                            FontFamily="Times New Roman"
+                            FontStyle="Italic"
+                            Text=" SuperMemo-2" />
+                        <Run FontFamily="SimSun" Text="间隔重复算法的预测模型，旨在解决传统复习方法中“复习间隔一刀切”的问题，最终帮助学习者以更高效率形成长期记忆。" />
+                    </TextBlock>
+
+                    <TextBlock
+                        Margin="0,0,0,30"
+                        FontSize="14"
+                        LineHeight="28"
+                        TextWrapping="Wrap">
+                        <Run FontFamily="SimSun" Text="     您的每一次专注的答题和参与，都是推动我们的项目迈向更个性化未来的一块重要基石。我们衷心感谢您为此研究贡献的时间和精力。" />
+                    </TextBlock>
+
+                    <TextBlock
+                        HorizontalAlignment="Right"
+                        FontFamily="Times New Roman"
+                        FontSize="14"
+                        Foreground="#666666"
+                        Text="Arabidopsis" />
+                </StackPanel>
+
+                <Button
+                    x:Name="ConfirmButton"
+                    Grid.Column="3"
+                    Margin="0,15,0,0"
+                    Padding="25,10"
+                    Background="#4A6FA5"
+                    Click="ConfirmButton_Click"
+                    Content="下一步"
+                    Cursor="Hand"
+                    FontSize="14"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    IsEnabled="True">
+                    <Button.Style>
+                        <Style BasedOn="{StaticResource {x:Type Button}}" TargetType="Button" />
+                    </Button.Style>
+                </Button>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

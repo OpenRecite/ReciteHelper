@@ -1,0 +1,192 @@
+﻿<Page
+    x:Class="ReciteHelper.DataCollect.Pages.Notice"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:ReciteHelper.DataCollect.Pages"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="Notice"
+    d:DesignHeight="450"
+    d:DesignWidth="800"
+    Background="White"
+    Loaded="Page_Loaded"
+    mc:Ignorable="d">
+
+    <Grid>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="60,40">
+                <Viewbox
+                    MaxHeight="40"
+                    Margin="0,0,0,10"
+                    HorizontalAlignment="Center"
+                    Stretch="Uniform">
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontFamily="华文中宋"
+                        Text="使用须知" />
+                </Viewbox>
+
+                <!--  英文副标题：Notice  -->
+                <TextBlock
+                    Margin="0,0,0,30"
+                    HorizontalAlignment="Center"
+                    FontFamily="Times New Roman"
+                    FontSize="18"
+                    Text="Notice" />
+
+                <StackPanel>
+                    <TextBlock
+                        Margin="0,0,0,20"
+                        FontSize="14"
+                        LineHeight="28"
+                        TextWrapping="Wrap">
+                        <Run FontFamily="SimSun" Text="感谢您参与本次数据收集。为确保数据质量并明确您的参与方式，请仔细阅读以下事项。完成所有步骤大约在需要在5天内，每天20分钟时间，您的贡献对我们的研究至关重要。" />
+                    </TextBlock>
+
+                    <StackPanel Margin="20,0,0,20">
+                        <TextBlock
+                            Margin="0,0,0,12"
+                            FontSize="14"
+                            LineHeight="28"
+                            TextWrapping="Wrap">
+                            <Run
+                                FontFamily="SimSun"
+                                FontWeight="Bold"
+                                Text="1. 题目总量与内容：" />
+                            <Run FontFamily="SimSun" Text=" 本次数据收集共包含 " />
+                            <Run
+                                FontFamily="Times New Roman"
+                                FontWeight="SemiBold"
+                                Text="40" />
+                            <Run FontFamily="SimSun" Text=" 道题目，内容涵盖数学、语言、常识、历史等多个学科领域。题目旨在模拟真实学习场景中的知识多样性。" />
+                        </TextBlock>
+
+                        <TextBlock
+                            Margin="0,0,0,12"
+                            FontSize="14"
+                            LineHeight="28"
+                            TextWrapping="Wrap">
+                            <Run
+                                FontFamily="SimSun"
+                                FontWeight="Bold"
+                                Text="2. 参与周期：" />
+                            <Run FontFamily="SimSun" Text=" 我们建议您在 " />
+                            <Run
+                                FontFamily="SimSun"
+                                FontWeight="SemiBold"
+                                Text="5天" />
+                            <Run FontFamily="SimSun" Text="（一周）内，每天抽出时间完成一次答题。此安排有助于我们观察记忆随时间的变化模式。您可以在方便的时间进行，但请尽量保持每日一次的频率。" />
+                        </TextBlock>
+
+                        <TextBlock
+                            Margin="0,0,0,12"
+                            FontSize="14"
+                            LineHeight="28"
+                            TextWrapping="Wrap">
+                            <Run
+                                FontFamily="SimSun"
+                                FontWeight="Bold"
+                                Foreground="#C00000"
+                                Text="3. 最重要的一点：展现您的真实反应" />
+                            <LineBreak />
+                            <Run FontFamily="SimSun" Text="   本工具的核心目标是收集您在自然状态下的认知行为数据（如思考时间、回忆准确性）。请您" />
+                            <Run
+                                FontFamily="SimSun"
+                                FontWeight="Bold"
+                                Text="不要" />
+                            <Run FontFamily="SimSun" Text="将答题视为考试或能力测试。" />
+                            <LineBreak />
+                            <Run FontFamily="SimSun" Text="   • 对于确信知道答案的题目，请正常作答；" />
+                            <LineBreak />
+                            <Run FontFamily="SimSun" Text="   • 对于不确定或完全不会的题目，" />
+                            <Run
+                                FontFamily="SimSun"
+                                FontWeight="Bold"
+                                Text="完全可以进行猜测" />
+                            <Run FontFamily="SimSun" Text="，或凭直觉输入一些内容，甚至可以直接输入“111”。" />
+                            <LineBreak />
+                            <Run FontFamily="SimSun" Text="   • 请不要借助任何外部工具（如搜索引擎、书籍）查找答案。您" />
+                            <Run
+                                FontFamily="SimSun"
+                                FontWeight="Bold"
+                                Text="最原始、最直接的反应" />
+                            <Run FontFamily="SimSun" Text="才是我们最有价值的数据。" />
+                        </TextBlock>
+
+                        <TextBlock
+                            Margin="0,0,0,12"
+                            FontSize="14"
+                            LineHeight="28"
+                            TextWrapping="Wrap">
+                            <Run
+                                FontFamily="SimSun"
+                                FontWeight="Bold"
+                                Text="4. 环境与设备：" />
+                            <Run FontFamily="SimSun" Text=" 请在相对安静、不受打扰的环境下进行，并使用您最常使用的输入设备（如个人电脑的键盘），以确保数据的一致性。" />
+                        </TextBlock>
+
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            FontSize="14"
+                            LineHeight="28"
+                            TextWrapping="Wrap">
+                            <Run
+                                FontFamily="SimSun"
+                                FontWeight="Bold"
+                                Text="5. 数据提交：" />
+                            <Run FontFamily="SimSun" Text=" 在第5天完成所有题目后，请您找到将软件目录下 data.json 文件，并将该文件作为附件发送至我们的研究邮箱：" />
+                            <LineBreak />
+                            <Run FontFamily="SimSun" Text="   " />
+                            <Run
+                                FontFamily="Times New Roman"
+                                FontWeight="Bold"
+                                Foreground="#007ACC"
+                                Text="arab@methodbox.top" />
+                            <LineBreak />
+                            <Run FontFamily="SimSun" Text="   邮件主题请注明“数据提交-ReciteHelper”。我们收到文件后会进行校验，并通过邮件向您确认。所有数据将严格保密，仅用于算法优化。" />
+                        </TextBlock>
+                    </StackPanel>
+
+                    <TextBlock
+                        Margin="0,0,0,30"
+                        FontSize="14"
+                        LineHeight="28"
+                        TextWrapping="Wrap">
+                        <Run FontFamily="SimSun" Text="再次感谢您的耐心与支持。您的参与将直接帮助我们改进算法，让未来的学习工具更智能、更人性化。" />
+                    </TextBlock>
+
+                    <Border
+                        Padding="0,20"
+                        BorderBrush="#DDDDDD"
+                        BorderThickness="0,1,0,0">
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,15"
+                                HorizontalAlignment="Center"
+                                FontFamily="SimSun"
+                                FontSize="14"
+                                Text="我已阅读、理解并同意上述所有使用须知。" />
+
+                            <Button
+                                x:Name="ConfirmButton"
+                                Grid.Column="3"
+                                Padding="25,10"
+                                Background="#4A6FA5"
+                                Click="ConfirmButton_Click"
+                                Content="下一步"
+                                Cursor="Hand"
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Foreground="White"
+                                IsEnabled="True">
+                                <Button.Style>
+                                    <Style BasedOn="{StaticResource {x:Type Button}}" TargetType="Button" />
+                                </Button.Style>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>
