@@ -403,3 +403,4 @@ FodyWeavers.xsd
 /model_training/dataset
 *.ipynb
 model_training/json_merge.json
+model_training/data.json

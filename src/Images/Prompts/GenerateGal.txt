@@ -95,9 +95,6 @@ For resources in the code, you can use the following resources,
 where image resources are under %pathimg and audio resources 
 are under %pathacc:
 
-
-
-
 SIMPLY return the corresponding code, which will ULTIMATELY RETURN a main storyline.
 
 Please think carefully about the meaning of the code before generating it, 

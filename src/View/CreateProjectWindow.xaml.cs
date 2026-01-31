@@ -412,7 +412,7 @@ public partial class CreateProjectWindow : Window
         // Process Scheduler: Please enter the text
         var parallelOptions = new ParallelOptions
         {
-            MaxDegreeOfParallelism = 2 * 2 * 2 * 2
+            MaxDegreeOfParallelism = 2 * 2 * 2 * 2 * 2
         };
 
         try
@@ -570,7 +570,6 @@ public partial class CreateProjectWindow : Window
         var chunks = BuildChunks(text);
         var chapters = new List<Chapter>();
 
-
         var allChapter = await MergeChunksAsync(chunks, proBar);
 
         // Since a block-based algorithm is used, a brute-force approach
@@ -581,6 +580,15 @@ public partial class CreateProjectWindow : Window
         foreach (var chapter in allChapter)
             foreach (var seg in chapter)
                 chapterNames.Add(seg.Name!);
+
+        //var builder = new StringBuilder();
+        //foreach (var cpt in chapterNames)
+        //{
+        //    builder.AppendLine(cpt);
+        //}
+        //File.WriteAllText("cptdata.txt", builder.ToString());
+
+        MessageBox.Show("成功了...");
 
         ProcessLabel.Content = $"分块聚类中...";
 
