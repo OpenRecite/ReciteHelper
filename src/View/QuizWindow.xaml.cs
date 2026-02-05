@@ -1,6 +1,4 @@
-﻿using Microsoft.ML.OnnxRuntime;
-using Microsoft.ML.OnnxRuntime.Tensors;
-using ReciteHelper.Model;
+﻿using ReciteHelper.Model;
 using ReciteHelper.Utils;
 using ReciteHelper.ViewModel;
 using System.Collections.ObjectModel;
@@ -242,11 +240,18 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         var rStandard = Config.Configure.RStandard;
         var rRelative = (double)rate / rStandard;
 
-        if (AnswerTextBox.Text.Length <= 10)
-            rRelative = -0.3125 * rRelative + 4.125;
-        rRelative = rRelative > 1.125d ? 1.125d : rRelative;
+        if (AnswerTextBox.Text.Length <= 12)
+        {
+            var l = AnswerTextBox.Text.Length;
+            var coff = -0.000000464 * Math.Pow(l, 4) 
+                + 0.0000746 * Math.Pow(l, 3) -0.0041 * Math.Pow(l, 2) 
+                + 0.0895 * l + 0.2497;
+            rRelative /= coff;
+            rRelative /= 1.099d;
+        }
 
-        if (isCorrect) similarity = similarity >= 75 ? similarity : 75;
+        rRelative = rRelative > 1.125d ? 1.125d : rRelative;
+        if (isCorrect) similarity = similarity >= 83 ? similarity : 83;
 
         var qValue = Supermemo.PredictQValue(rRelative, similarity);
         var efValue = Supermemo.CalculateEFValue(

@@ -455,7 +455,7 @@ public partial class CreateProjectWindow : Window
                         Interlocked.Increment(ref progress);
                         SetCount(proBar, progress + 1);
                     }
-                    catch (Exception fme)
+                    catch (FormatException fme)
                     {
                         // ignored
                         Debug.WriteLine($"Pretend that I handled the exception: {fme.Message}");
