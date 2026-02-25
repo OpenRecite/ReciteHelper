@@ -22,11 +22,31 @@ ReciteHelper 承诺永久保持开源、免费的性质。如果您感觉该项�
 
 ---
 
-## 如何运行
+## 快速开始
 
-1. 环境依赖：需安装 .NET 10 及以上运行环境。
-2. 下载项目源码或者直接下载发行版。
-3. 启动主程序，按界面提示导入 PDF 学习资料，创建项目后即可体验全部功能。
+### 普通用户
+1. 前往 [Releases](https://github.com/ArabidopsisDev/ReciteHelper/releases) 页面下载最新版本。
+2. 解压并运行 `ReciteHelper.exe`。
+3. 按界面提示导入 PDF 学习资料，创建项目后即可体验全部功能。
+
+### 开发者构建
+1. **环境依赖**：需安装 .NET 10 SDK。
+2. **获取源码**：
+   本项目包含子模块，请使用递归克隆：
+   ```bash
+   git clone --recurse-submodules https://github.com/ArabidopsisDev/ReciteHelper.git
+   ```
+   如果已经克隆了仓库，请初始化子模块：
+   ```bash
+   git submodule update --init --recursive
+   ```
+3. **编译运行**：
+   - 使用 JetBrains Rider 或 Visual Studio 打开 `src/ReciteHelper.slnx`。
+   - 或者使用命令行：
+     ```bash
+     dotnet restore
+     dotnet run --project src/ReciteHelper.csproj
+     ```
 
 具体使用方法，请参考**用户手册**。
 
