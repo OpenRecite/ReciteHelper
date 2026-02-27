@@ -24,6 +24,24 @@ public class CosineSimilarity
         return CalculateWordLevelSimilarity(tokensA, tokensB);
     }
 
+    public static float SpecCalculate(ReadOnlySpan<float> v1, ReadOnlySpan<float> v2)
+    {
+        if (v1.Length != v2.Length) throw new ArgumentException("");
+
+        float dotProduct = 0f;
+        float n1 = 0f;
+        float n2 = 0f;
+
+        for (int i = 0; i < v1.Length; i++)
+        {
+            dotProduct += v1[i] * v2[i];
+            n1 += v1[i] * v1[i];
+            n2 += v2[i] * v2[i];
+        }
+
+        return n1 == 0 || n2 == 0 ? 0 : dotProduct / (MathF.Sqrt(n1) * MathF.Sqrt(n2));
+    }
+
     // Danger: The effectiveness of the hybrid cosine similarity algorithm in processing
     //         short texts has not been proven
     private double CalculateMixedSimilarity(string textA, string textB,

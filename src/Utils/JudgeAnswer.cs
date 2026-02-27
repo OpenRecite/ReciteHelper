@@ -1,12 +1,14 @@
-﻿using FuzzyString;
+﻿using Microsoft.Extensions.AI;
+using Microsoft.SemanticKernel;
 using ReciteHelper.Model;
 using ReciteHelper.ViewModel;
+using System.Windows;
 
 namespace ReciteHelper.Utils;
 
 internal class JudgeAnswer
 {
-    internal static bool Run(string? userAnswer, string? correctAnswer)
+    internal async static Task<bool> RunAsync(string? userAnswer, string? correctAnswer)
     {
         ArgumentNullException.ThrowIfNull(userAnswer, nameof(userAnswer));
         ArgumentNullException.ThrowIfNull(correctAnswer, nameof(correctAnswer));
@@ -17,40 +19,54 @@ internal class JudgeAnswer
             CorrectAnswer = correctAnswer,
         };
 
-        return Run(new QuestionItem() { Question = question ,UserAnswer = userAnswer});
+        return await RunAsync(new QuestionItem() { Question = question, UserAnswer = userAnswer });
     }
 
-    internal static bool Run(ExamQuestionItem question)
+    internal static async Task<bool> RunAsync(ExamQuestionItem question)
     {
         ArgumentNullException.ThrowIfNull(question, nameof(question));
 
-        return Run(question.UserAnswer, question.Question!.CorrectAnswer);
+        return await RunAsync(question.UserAnswer, question.Question!.CorrectAnswer);
     }
 
-    internal static bool Run(QuestionItem question)
+    internal async static Task<bool> RunAsync(
+        QuestionItem question, double threshold = .70d) =>
+            await CalculateAsync(question) > threshold;
+
+    internal async static Task<double> CalculateAsync(QuestionItem question)
     {
-        if (string.IsNullOrEmpty(question.UserAnswer)) return false;
+        var user = question.UserAnswer!;
+        var target = question.Question!.CorrectAnswer!;
 
-        // Are the traditionalists still refusing to admit defeat?
-        var tolerance = FuzzyStringComparisonTolerance.Strong;
-        var comparisonOptions = new List<FuzzyStringComparisonOptions>
-        {
-            FuzzyStringComparisonOptions.UseOverlapCoefficient,
-            FuzzyStringComparisonOptions.UseLongestCommonSubsequence,
-            FuzzyStringComparisonOptions.UseLongestCommonSubstring
-        };
+        var builder = Kernel.CreateBuilder();
 
-        // Calculate text cosine similarity
-        var similarity = new CosineSimilarity();
-        var score = similarity.Calculate(question.UserAnswer,
-            question.Question!.CorrectAnswer!);
+        builder.AddBertOnnxEmbeddingGenerator(
+            onnxModelPath: @"Resources\Models\sbert.onnx",
+            vocabPath: @"Resources\vocab.txt"
+        );
 
-        bool isCorrect = question.UserAnswer.ApproximatelyEquals(
-            question.Question!.CorrectAnswer, comparisonOptions, tolerance);
-        if (question.UserAnswer.Length >= 15) score -= .2d;
-        isCorrect = isCorrect | (score > .4);
+        var kernel = builder.Build();
 
-        return isCorrect;
+        var embeddingGenerator = kernel.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
+        var userEmbeddings = await embeddingGenerator.GenerateAsync([user]);
+        var targetEmbeddings = await embeddingGenerator.GenerateAsync([target]);
+
+        var vecUser = userEmbeddings[0].Vector;
+        var vecTarget = targetEmbeddings[0].Vector;
+
+        var sbertSim = CosineSimilarity.SpecCalculate(vecUser.Span, vecTarget.Span);
+        
+        var userSet = user.ToHashSet();
+        var targetSet = target.ToHashSet();
+        var jaccard = (double)userSet.Intersect(targetSet).Count() / userSet.Union(targetSet).Count();
+
+        var sbertWeight = Math.Clamp(target.Length / 7.0, 0.6, 0.9);
+        var jaccardWeight = 1.0 - sbertWeight;
+
+        var result = (sbertSim * sbertWeight) + (jaccard * jaccardWeight);
+        MessageBox.Show($"Score: {result}");
+
+        return result;
     }
 
     public static double CalculateSimilarity(QuestionItem question)
