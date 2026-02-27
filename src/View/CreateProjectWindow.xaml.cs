@@ -588,8 +588,6 @@ public partial class CreateProjectWindow : Window
         //}
         //File.WriteAllText("cptdata.txt", builder.ToString());
 
-        MessageBox.Show("成功了...");
-
         ProcessLabel.Content = $"分块聚类中...";
 
 

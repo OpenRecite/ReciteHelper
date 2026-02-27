@@ -68,6 +68,19 @@
     <None Remove="Images\type_card.png" />
     <None Remove="Images\type_classical.png" />
     <None Remove="Images\type_pdf.png" />
+    <None Remove="Resources\char_state_tab.json" />
+    <None Remove="Resources\cn_synonym.txt" />
+    <None Remove="Resources\dict.txt" />
+    <None Remove="Resources\idf.txt" />
+    <None Remove="Resources\Models\sbert.onnx" />
+    <None Remove="Resources\Models\xgboost_qvalue.onnx" />
+    <None Remove="Resources\pos_prob_emit.json" />
+    <None Remove="Resources\pos_prob_start.json" />
+    <None Remove="Resources\pos_prob_trans.json" />
+    <None Remove="Resources\prob_emit.json" />
+    <None Remove="Resources\prob_trans.json" />
+    <None Remove="Resources\stopwords.txt" />
+    <None Remove="Resources\tokenizer.json" />
   </ItemGroup>
 
   <ItemGroup>
@@ -93,7 +106,37 @@
     <Content Include="Images\Prompts\ReClustering.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="xgboost_predQ.onnx">
+    <Content Include="Resources\char_state_tab.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\cn_synonym.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\dict.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\idf.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\pos_prob_emit.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\pos_prob_start.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\pos_prob_trans.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\prob_emit.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\prob_trans.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\stopwords.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\tokenizer.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -109,6 +152,8 @@
     <PackageReference Include="Markdig.Wpf" Version="0.5.0.1" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.2" />
+    <PackageReference Include="Microsoft.SemanticKernel.Abstractions" Version="1.72.0" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Onnx" Version="1.72.0-alpha" />
     <PackageReference Include="System.Management" Version="10.0.1" />
   </ItemGroup>
 
@@ -154,6 +199,12 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Images\Phonk\Soundfx\phonk9.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\Models\sbert.onnx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\Models\xgboost_qvalue.onnx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Resource Include="Images\type_girl.png" />

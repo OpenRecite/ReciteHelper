@@ -27,7 +27,7 @@ internal class Supermemo
     {
 
         // Load model
-        string modelPath = "xgboost_predQ.onnx";
+        string modelPath = "Resources\\Models\\xgboost_qvalue.onnx";
         using var session = new InferenceSession(modelPath);
 
         // The model is expected to have an accuracy of approximately
@@ -43,6 +43,7 @@ internal class Supermemo
         {
             NamedOnnxValue.CreateFromTensor("float_input", inputTensor)
         };
+
         using var results = session.Run(inputs);
         var label = results.First(r => r.Name == "label").AsEnumerable<long>().First();
         var probs = results.First(r => r.Name == "probabilities").AsEnumerable<float>().ToArray();
