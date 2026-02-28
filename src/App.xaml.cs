@@ -87,7 +87,7 @@ namespace ReciteHelper
                 File.AppendAllText(logPath, logContent + new string('-', 80) + "\n\n");
                 Console.Error.WriteLine($"Error ({source}): {ex?.Message}");
                 WriteToEventLog(ex, source);
-                Console.WriteLine("错误日志以保存至 error.log，请发送给开发者寻求帮助", "错误", 
+                Console.WriteLine("错误日志以保存至 error.log，请直接复制错误文本，或将 error.log 发送给开发者寻求帮助", "错误", 
                     MessageBoxButton.OK,MessageBoxImage.Error);
             }
             catch (Exception logEx)

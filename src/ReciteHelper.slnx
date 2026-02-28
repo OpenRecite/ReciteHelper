@@ -1,4 +1,5 @@
 <Solution>
-  <Project Path="ReciteHelper.csproj" />
+  <Project Path="../ReciteHelper.Core/ReciteHelper.Core.csproj" Id="90255147-960e-4dcb-b3de-4f04e7166c84" />
   <Project Path="..\external\AquaAvgFramework\AquaAvgFramework.csproj" />
+  <Project Path="ReciteHelper.csproj" />
 </Solution>
