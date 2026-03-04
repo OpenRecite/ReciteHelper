@@ -1,22 +1,60 @@
-﻿namespace ReciteHelper.Core.ValueObjects;
+﻿using ReciteHelper.Core.Entities;
+using ReciteHelper.SharedKernel;
 
-public class Chunk(int index, string content) : IEquatable<Chunk>
+namespace ReciteHelper.Core.ValueObjects;
+
+public class Chunk : ValueObject
 {
-    public int Index { get; set; } = index;
-    public string Content { get; set; } = content;
-    public bool IsSuccess { get; set; } = false;
+    public int Index { get; private set; }
+    public string Content { get; private set; } = string.Empty;
+    public bool IsSuccess { get; private set; } = false;
 
-    public bool Equals(Chunk? other)
+    private Chunk(string content, bool isSuccess, int index)
     {
-        if (other is null) return false;
-        return Index == other.Index && Content == other.Content;
+        Content = content;
+        IsSuccess = isSuccess;
+        Index = index;
+
+        Validate();
     }
 
-    public override bool Equals(object? obj) => Equals(obj as Chunk);
-    public override int GetHashCode() => HashCode.Combine(Index, Content);
+    public static Chunk Create(string content, bool isSuccess, int index)
+    {
+        return Create(() => 
+        { 
+            return new Chunk(content, isSuccess, index); 
+        });
+    }
+
+    public override T Clone<T>()
+    {
+        return (T)(object)new Chunk(Content, IsSuccess, Index);
+    }
+
+    public Chunk MarkAsSucceed()
+    {
+        return new Chunk(Content, true, Index);
+    }
+
+    protected override IEnumerable<object> GetEqualityComponents()
+    {
+        yield return Content;
+        yield return IsSuccess;
+    }
+
+    protected override void Validate()
+    {
+        if (Content.Length > 10000)
+            throw new ArgumentException("Chunk is too long");
+    }
 
     public override string ToString()
     {
-        return $"Index:{Index}\nContent:{Content}\nStatus:{IsSuccess}";
+        var status = IsSuccess ? "✓" : "✗";
+        var preview = Content.Length > 30
+            ? Content[..30] + "..."
+            : Content;
+
+        return $"Chunk[{Index}] {status}: {preview}";
     }
 }

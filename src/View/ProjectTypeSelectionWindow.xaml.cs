@@ -1,4 +1,5 @@
-﻿using ReciteHelper.Model;
+﻿using ReciteHelper.Core.Enums;
+using ReciteHelper.Model;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;

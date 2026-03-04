@@ -9,17 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="xgboost_predQ.onnx" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="xgboost_predQ.onnx">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.2" />
+    <Folder Include="ViewModels\" />
   </ItemGroup>
 
 </Project>

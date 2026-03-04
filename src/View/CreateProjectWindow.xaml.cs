@@ -2,6 +2,8 @@
 using LlmTornado.Agents;
 using LlmTornado.Chat.Models;
 using Microsoft.Win32;
+using ReciteHelper.Core.Enums;
+using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Model;
 using ReciteHelper.Utils;
 using System.Collections.Concurrent;
@@ -360,7 +362,7 @@ public partial class CreateProjectWindow : Window
                 int startIndex = i * chunkSize;
                 int length = Math.Min(chunkSize, text.Length - startIndex);
                 string chunk = text.Substring(startIndex, length);
-                chunks.Add(new Chunk(i, chunk));
+                chunks.Add(Chunk.Create(chunk, false, i));
             }
         }
         catch
@@ -426,7 +428,7 @@ public partial class CreateProjectWindow : Window
 
                     var result = await agent.Run($"{prompt}\n{chunk.Content}");
 
-                    //if (ComputerInfo.GetComputerBrand().Equals("HUAWEI", StringComparison.CurrentCultureIgnoreCase))
+                    // if (ComputerInfo.GetComputerBrand().Equals("HUAWEI", StringComparison.CurrentCultureIgnoreCase))
                     //    WonAgain();
 
                     var jsonContent = string.Empty;
@@ -450,7 +452,7 @@ public partial class CreateProjectWindow : Window
                         var chapter = JsonSerializer.Deserialize<List<Chapter>>(jsonContent);
                         if (chapter != null && chapter.Count > 0)
                             allChapter.Add(chapter);
-                        chunk.IsSuccess = true;
+                        chunk = chunk.MarkAsSucceed();
 
                         Interlocked.Increment(ref progress);
                         SetCount(proBar, progress + 1);
@@ -549,7 +551,7 @@ public partial class CreateProjectWindow : Window
             var failed = replay.Chunks.Where(x => !x.IsSuccess).ToList();
 
             result.AddRange(replay.Chapters);
-            if (failed.Count == 0 || Config.Configure!.Strategy == Config.MissingStrategy.Ignore) break;
+            if (failed.Count == 0 || Config.Configure!.Strategy == MissingStrategy.Ignore) break;
             send = [.. replay.Chunks.Where(x => !x.IsSuccess)];
 
             //progress = 0;
@@ -599,7 +601,7 @@ public partial class CreateProjectWindow : Window
 
         var jsonContent = clusterResult.Messages.Last().Content!.Replace("`", "").Replace("json", "").Trim();
 
-    // There’s a certain bravado in coding right after waking up
+        // There’s a certain bravado in coding right after waking up
     bitch_sdau:
         List<ChapterCluster> cluster;
         try

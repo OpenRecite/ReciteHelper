@@ -1,4 +1,7 @@
-﻿using ReciteHelper.Model;
+﻿using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.Enums;
+using ReciteHelper.Core.ValueObjects;
+using ReciteHelper.Model;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -29,11 +32,3 @@ public class QuestionItem : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
-
-public enum AnswerStatus
-{
-    NotAnswered,
-    Correct,
-    Wrong
-}
-

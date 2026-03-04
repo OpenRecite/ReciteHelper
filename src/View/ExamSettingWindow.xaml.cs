@@ -1,4 +1,5 @@
-﻿using ReciteHelper.Model;
+﻿using ReciteHelper.Core.ValueObjects;
+using ReciteHelper.Model;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;

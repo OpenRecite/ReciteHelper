@@ -1,5 +1,6 @@
 ﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Model;
 using System.Numerics;
 
@@ -75,11 +76,7 @@ internal class Supermemo
             .ThenBy(q => rnd.Next()).Take(count).ToList();
 
         // Clear status
-        foreach (var question in shuffle)
-        {
-            question.UserAnswer = string.Empty;
-            question.Status = null;
-        }
+        shuffle.ForEach(q => q.Status = null);
 
         return shuffle;
     }

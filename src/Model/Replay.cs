@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using ReciteHelper.Core.ValueObjects;
+using System.Collections.Concurrent;
 
 namespace ReciteHelper.Model;
 

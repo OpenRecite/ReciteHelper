@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using ReciteHelper.Core.ValueObjects;
+using System.Text.Json.Serialization;
 
 namespace ReciteHelper.Model;
 
