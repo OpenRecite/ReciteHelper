@@ -228,11 +228,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
         foreach (var chapter in record.Chapters)
         {
             if (chapter.Questions is null) continue;
-            foreach (var questions in chapter.Questions)
-            {
-                questions.Status = null;
-                questions.UserAnswer = "";
-            }
+            chapter.Questions.ForEach(q => q.Status = null);
         }
 
         // Reset record

@@ -1,4 +1,6 @@
-﻿using System.ComponentModel;
+﻿using ReciteHelper.Core.Enums;
+using ReciteHelper.Core.ValueObjects;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 
@@ -26,10 +28,4 @@ public class ExamQuestionItem : INotifyPropertyChanged
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
-}
-
-public enum ExamAnswerStatus
-{
-    NotAnswered,
-    Answered
 }

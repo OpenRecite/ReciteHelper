@@ -1,4 +1,6 @@
 ﻿using Microsoft.Win32;
+using ReciteHelper.Core.Enums;
+using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Model;
 using ReciteHelper.Utils;
 using ReciteHelper.View;
@@ -7,7 +9,6 @@ using System.IO.Compression;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
-using static ReciteHelper.Model.ProjectType;
 
 namespace ReciteHelper
 {
@@ -150,20 +151,17 @@ namespace ReciteHelper
 
             // Check if exists
             var existingProject = recentProjects.Find(p => p.ProjectPath.Equals(projectPath, StringComparison.OrdinalIgnoreCase));
-            if (existingProject != null)
+            if (existingProject is not null)
             {
                 // Update visit time
-                existingProject.LastAccessed = DateTime.Now;
+                existingProject = existingProject.ModifyLastAccessedTime(DateTime.Now);
             }
             else
             {
                 // Add new project
-                recentProjects.Add(new RecentProject
-                {
-                    ProjectName = projectName,
-                    ProjectPath = projectPath,
-                    LastAccessed = DateTime.Now
-                });
+                var recentProject = 
+                    RecentProject.Create(projectName, projectPath, DateTime.Now);
+                recentProjects.Add(recentProject);
 
                 // Master~ I want to be ♡~ filled up!
                 if (recentProjects.Count > 10)
@@ -295,7 +293,9 @@ namespace ReciteHelper
         private void CatchProject(string path, string name)
         {
             // Display to user
-            recentProjects.Add(new() { ProjectPath=path, LastAccessed=DateTime.Now, ProjectName=name });
+            var recentProject = RecentProject.Create(name, path, DateTime.Now);
+            recentProjects.Add(recentProject);
+
             SaveRecentProjects();
             PopulateRecentProjectsUI();
         }

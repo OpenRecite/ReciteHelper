@@ -1,4 +1,5 @@
-﻿using ReciteHelper.View;
+﻿using ReciteHelper.Core.Enums;
+using ReciteHelper.View;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -68,19 +69,5 @@ public class ProjectType : INotifyPropertyChanged
     protected virtual void OnPropertyChanged(string propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-
-
-    /// <summary>
-    /// Specifies the available types of project templates supported by the application.
-    /// </summary>
-    /// <remarks>Use this enumeration to select the template type when creating or managing a project. The
-    /// values correspond to different study or review methodologies.</remarks>
-    public enum ProjectTemplateType
-    {
-        ClassicalReview,
-        FlashCard,
-        PDFMerge,
-        GalGame
     }
 }

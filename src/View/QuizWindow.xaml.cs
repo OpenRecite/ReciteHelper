@@ -1,4 +1,7 @@
-﻿using ReciteHelper.Model;
+﻿using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.Enums;
+using ReciteHelper.Core.ValueObjects;
+using ReciteHelper.Model;
 using ReciteHelper.Utils;
 using ReciteHelper.ViewModel;
 using System.Collections.ObjectModel;
@@ -38,7 +41,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     }
 
 
-    public QuizWindow(Project project, List<Question> plan)
+    public QuizWindow(Project project, List<Question> recitePlan)
     {
         InitializeComponent();
         DataContext = this;
@@ -47,7 +50,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         _chapterName= "复习计划";
         _latest = new LatestBuffer<bool>(Config.Configure.PhonkOptions.WrongCount);
 
-        InitializeQuestions(plan);  
+        InitializeQuestions(recitePlan);
         LocateCurrent();
         UpdateDisplay();
     }
@@ -90,7 +93,6 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
                     false => AnswerStatus.Wrong,
                     null => AnswerStatus.NotAnswered
                 },
-                UserAnswer = questions[i].UserAnswer,
                 StatusStyle = (Style)FindResource("AnswerCardButtonStyle")
             });
         }
@@ -243,28 +245,38 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         if (AnswerTextBox.Text.Length <= 12)
         {
             var l = AnswerTextBox.Text.Length;
-            var coff = -0.000000464 * Math.Pow(l, 4) 
-                + 0.0000746 * Math.Pow(l, 3) -0.0041 * Math.Pow(l, 2) 
+
+            /*
+             * WARNING:
+             * This is an empirical formula derived from actual measurements and 
+             * fitted data. Do not modify this line unless rigorously proven to 
+             * yield a fit superior to a fourth-order polynomial
+             */
+            var coff = -0.000000464 * Math.Pow(l, 4)
+                + 0.0000746 * Math.Pow(l, 3) -0.0041 * Math.Pow(l, 2)
                 + 0.0895 * l + 0.2497;
+
             rRelative /= coff;
             rRelative /= 1.099d;
         }
 
         rRelative = rRelative > 1.125d ? 1.125d : rRelative;
-        if (isCorrect) similarity = similarity >= 83 ? similarity : 83;
 
         var qValue = Supermemo.PredictQValue(rRelative, similarity);
         var efValue = Supermemo.CalculateEFValue(
             currentQuestion.Question!.EFValue, qValue);
 
-        _questions[_currentQuestionIndex].Question!.ReviewTag.Add(
-            new ReviewTag()
-            {
-                Rate=rRelative,
-                Time=DateTime.Now,
-                Similarity=similarity,
-                QValue = qValue
-            });
+        var tagCount = _questions[_currentQuestionIndex].Question!.ReviewTag.Count;
+        var reviewTag = new ReviewTag()
+        {
+            Rate=rRelative,
+            Time=DateTime.Now,
+            Similarity=similarity,
+            QValue = qValue
+        };
+        reviewTag.SetId(tagCount + 1);
+        _questions[_currentQuestionIndex].Question!.ReviewTag.Add(reviewTag);
+
         currentQuestion.Question!.EFValue = efValue;
         QDisplayLabel.Content = $"Q Predict: {qValue}";
 
@@ -365,7 +377,6 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         var chapter = _project.Chapters!.Find(x => x.Name == _chapterName)!;
         for (int i = 0; i < _questions.Count; i++)
         {
-            chapter.Questions![i].UserAnswer = _questions[i].UserAnswer;
             chapter.Questions![i].Status = _questions[i].Status switch
             {
                 AnswerStatus.NotAnswered => null,

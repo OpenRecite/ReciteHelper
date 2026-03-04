@@ -1,4 +1,5 @@
-﻿using ReciteHelper.Utils;
+﻿using ReciteHelper.Core.Enums;
+using ReciteHelper.Utils;
 using System.IO;
 using System.Xml.Serialization;
 
@@ -28,11 +29,5 @@ public class Config
         var originConfig = (Config?)serializer.Deserialize(reader);
         originConfig!.DeepSeekKey = await Parser.ParseConfigText(originConfig.DeepSeekKey);
         return originConfig;
-    }
-
-    public enum MissingStrategy
-    {
-        Ignore,
-        Replay
     }
 }

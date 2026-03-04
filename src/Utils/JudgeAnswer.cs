@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.AI;
 using Microsoft.SemanticKernel;
+using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Model;
 using ReciteHelper.ViewModel;
 using System.Windows;
@@ -15,7 +16,6 @@ internal class JudgeAnswer
 
         var question = new Question()
         {
-            UserAnswer = userAnswer,
             CorrectAnswer = correctAnswer,
         };
 

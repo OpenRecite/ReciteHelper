@@ -6,8 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\ReciteHelper.SharedKernel\ReciteHelper.SharedKernel.csproj" />
-  </ItemGroup>
-
 </Project>
