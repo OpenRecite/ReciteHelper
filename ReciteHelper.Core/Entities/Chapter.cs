@@ -1,10 +1,14 @@
 ﻿using ReciteHelper.Core.ValueObjects;
+using ReciteHelper.SharedKernel;
 using System.Text.Json.Serialization;
 
-namespace ReciteHelper.Model;
+namespace ReciteHelper.Core.Entities;
 
-public class Chapter
+public class Chapter : Entity
 {
+    [JsonConstructor]
+    public Chapter() { }
+
     [JsonPropertyName("name")]
     public string? Name { get; set; }
 

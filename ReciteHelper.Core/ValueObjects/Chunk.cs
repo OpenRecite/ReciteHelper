@@ -1,5 +1,4 @@
-﻿using ReciteHelper.Core.Entities;
-using ReciteHelper.SharedKernel;
+﻿using ReciteHelper.SharedKernel;
 
 namespace ReciteHelper.Core.ValueObjects;
 
@@ -14,8 +13,6 @@ public class Chunk : ValueObject
         Content = content;
         IsSuccess = isSuccess;
         Index = index;
-
-        Validate();
     }
 
     public static Chunk Create(string content, bool isSuccess, int index)

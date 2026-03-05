@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using ReciteHelper.Core.Enums;
+using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Model;
 using ReciteHelper.Utils;
 using System.Collections.ObjectModel;
@@ -93,7 +94,7 @@ public partial class FileMergeWindow : Window, INotifyPropertyChanged
     private string FormatFileSize(long bytes)
     {
         // Go get that 1TB, I'll wait
-        string[] sizes = [ "B", "KB", "MB", "GB" ];
+        string[] sizes = ["B", "KB", "MB", "GB"];
         double len = bytes;
         int order = 0;
 
@@ -144,22 +145,23 @@ public partial class FileMergeWindow : Window, INotifyPropertyChanged
             return;
         }
 
-        var files = new MergeFile();
-        if (ModeButton.Content.ToString()!.Contains("Sequential")) files.ClusterType = FileClusterType.Sequential;
-        else files.ClusterType = FileClusterType.Discrete;
+        var clusterType = ModeButton.Content.ToString()!.Contains("Sequential") ? FileClusterType.Sequential : FileClusterType.Discrete;
+        var contens = new List<string>();
 
         foreach (var item in _fileItems)
         {
             if (item.FileExtension == ".meg")
             {
                 var megFile = (MergeFile)ExtractText.FromAutomatic(item.FilePath);
-                files.Contents.AddRange(megFile.Contents);
+                contens.AddRange(megFile.Contents);
             }
             else
             {
-                files.Contents.Add(ExtractText.FromAutomatic(item.FilePath));
+                contens.Add(ExtractText.FromAutomatic(item.FilePath));
             }
         }
+
+        var files = MergeFile.Create(contens, clusterType);
 
         var saveFileDialog = new SaveFileDialog
         {

@@ -1,4 +1,5 @@
-﻿using ReciteHelper.Core.ValueObjects;
+﻿using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Model;
 using System.ComponentModel;
 using System.Windows;
@@ -193,14 +194,14 @@ namespace ReciteHelper.View
                 return;
 
             // Create an exam settings object
-            var examSettings = new ExamSettings
-            {
-                CourseNumber = CourseNumberTextBox.Text,
-                ExamTimeMinutes = int.Parse(ExamTimeTextBox.Text),
-                QuestionCount = int.Parse(QuestionCountTextBox.Text),
-                ScorePerQuestion = int.Parse(ScorePerQuestionTextBox.Text),
-                ChapterWeights = _chapterWeights.ToDictionary(c => c.ChapterName, c => c.Weight)
-            };
+            var examSettings = ExamSettings.Create
+            (
+                CourseNumberTextBox.Text,
+                int.Parse(ExamTimeTextBox.Text),
+                int.Parse(QuestionCountTextBox.Text),
+                int.Parse(ScorePerQuestionTextBox.Text),
+                _chapterWeights.ToDictionary(c => c.ChapterName, c => c.Weight)
+            );
 
             // Here you can save settings to a file or database
             SaveExamSettings(examSettings);
@@ -215,15 +216,14 @@ namespace ReciteHelper.View
                 return;
 
             // Create an exam settings object
-            var examSettings = new ExamSettings
-            {
-                CourseNumber = CourseNumberTextBox.Text,
-                ExamTimeMinutes = int.Parse(ExamTimeTextBox.Text),
-                QuestionCount = int.Parse(QuestionCountTextBox.Text),
-                ScorePerQuestion = int.Parse(ScorePerQuestionTextBox.Text),
-                ChapterWeights = _chapterWeights.ToDictionary(c => c.ChapterName, c => c.Weight)
-            };
-
+            var examSettings = ExamSettings.Create
+            (
+                CourseNumberTextBox.Text,
+                int.Parse(ExamTimeTextBox.Text),
+                int.Parse(QuestionCountTextBox.Text),
+                int.Parse(ScorePerQuestionTextBox.Text),
+                _chapterWeights.ToDictionary(c => c.ChapterName, c => c.Weight)
+            );
             SaveExamSettings(examSettings);
 
             var examQuestions = GenerateExamQuestions(examSettings);

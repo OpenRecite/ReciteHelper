@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 using ReciteHelper.Model;
+using ReciteHelper.SharedKernel.Result;
 using System.Text.RegularExpressions;
 
 namespace ReciteHelper.Utils;

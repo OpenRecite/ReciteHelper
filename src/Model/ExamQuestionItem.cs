@@ -1,5 +1,5 @@
-﻿using ReciteHelper.Core.Enums;
-using ReciteHelper.Core.ValueObjects;
+﻿using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.Enums;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;

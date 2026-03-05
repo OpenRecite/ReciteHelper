@@ -1,6 +1,6 @@
 ﻿using FuzzyString;
+using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Enums;
-using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Model;
 using ReciteHelper.Utils;
 using System.Collections.ObjectModel;

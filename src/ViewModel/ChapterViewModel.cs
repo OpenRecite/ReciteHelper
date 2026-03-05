@@ -1,4 +1,5 @@
-﻿using ReciteHelper.Model;
+﻿using ReciteHelper.Core.Entities;
+using ReciteHelper.Model;
 using System.ComponentModel;
 
 namespace ReciteHelper.ViewModel;

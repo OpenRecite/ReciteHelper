@@ -1,4 +1,6 @@
-﻿using ReciteHelper.Model;
+﻿using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.ValueObjects;
+using ReciteHelper.Model;
 using ReciteHelper.Utils;
 using System.ComponentModel;
 using System.IO;
@@ -107,7 +109,7 @@ public partial class KnowledgePointWindow : Window, INotifyPropertyChanged
 
         if (sender is CheckBox checkBox && checkBox.Tag is KnowledgePoint knowledgePoint)
         {
-            knowledgePoint.IsMastered = checkBox.IsChecked == true;
+            knowledgePoint = knowledgePoint.ModifyMasteredStatus(checkBox.IsChecked is true);
 
             // If this knowledge point is currently displayed, update the details area.
             if (_currentKnowledgePoint == knowledgePoint)
@@ -124,7 +126,8 @@ public partial class KnowledgePointWindow : Window, INotifyPropertyChanged
     {
         if (_currentKnowledgePoint != null)
         {
-            _currentKnowledgePoint.IsMastered = MasteryCheckBox.IsChecked == true;
+            _currentKnowledgePoint = 
+                _currentKnowledgePoint.ModifyMasteredStatus(MasteryCheckBox.IsChecked is true);
             UpdateMasteryDisplay();
             SaveProjectChanges();
 

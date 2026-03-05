@@ -1,6 +1,6 @@
 ﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using ReciteHelper.Core.ValueObjects;
+using ReciteHelper.Core.Entities;
 using ReciteHelper.Model;
 using System.Numerics;
 

@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.AI;
 using Microsoft.SemanticKernel;
-using ReciteHelper.Core.ValueObjects;
+using ReciteHelper.Core.Entities;
 using ReciteHelper.Model;
 using ReciteHelper.ViewModel;
 using System.Windows;

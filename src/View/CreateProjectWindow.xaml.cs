@@ -2,6 +2,7 @@
 using LlmTornado.Agents;
 using LlmTornado.Chat.Models;
 using Microsoft.Win32;
+using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Enums;
 using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Model;
@@ -479,7 +480,7 @@ public partial class CreateProjectWindow : Window
             // Has it been dealt with? (Referring to the Buddha...)
         }
 
-        var replay = new Replay(sendChunks, allChapter);
+        var replay = Replay.Create(sendChunks, allChapter);
         return replay;
     }
 

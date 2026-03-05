@@ -1,5 +1,6 @@
 ﻿using Docnet.Core;
 using Docnet.Core.Models;
+using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Model;
 using Spire.Doc;
 using Spire.Presentation;

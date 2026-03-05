@@ -1,4 +1,6 @@
 ﻿using AquaAvgFramework.StoryLineComponents;
+using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Model;
 using ReciteHelper.Utils;
 using ReciteHelper.ViewModel;
@@ -15,7 +17,7 @@ namespace ReciteHelper.View;
 
 public partial class SelectChapterWindow : Window, INotifyPropertyChanged
 {
-    private Project _currentProject;
+    private Project? _currentProject;
     private DispatcherTimer _clockTimer;
     private List<ChapterViewModel> _chapters;
 
@@ -202,12 +204,12 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
         Directory.CreateDirectory(path);
 
         // Create manifest file
-        var manifest = new Manifest()
-        {
-            ProjectFile = $"{_currentProject.ProjectName}_exp.rhproj",
-            BankFile = _currentProject.QuestionBankPath,
-            Version = Config.Configure?.Version,
-        };
+        var manifest = Manifest.Create
+        (
+            $"{_currentProject.ProjectName}_exp.rhproj",
+             _currentProject.QuestionBankPath,
+             Config.Configure?.Version
+        );
         var manifestString = JsonSerializer.Serialize<Manifest>(manifest,
             new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
         var manifestPath = Path.Combine(_currentProject.StoragePath, _currentProject.ProjectName, "output", "manifest.json");
@@ -247,12 +249,12 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
         MessageBox.Show("已导出至rh_output.zip。");
     }
 
-    private void ReviewMenuItem_Click(object sender,RoutedEventArgs e)
+    private void ReviewMenuItem_Click(object sender, RoutedEventArgs e)
     {
         var questionList = Supermemo.GenerateReview(_currentProject, 30);
 
         var quizWindow = new QuizWindow(_currentProject, questionList)
-            { Owner = Application.Current.MainWindow };
+        { Owner = Application.Current.MainWindow };
         quizWindow.Show();
         Close();
     }
