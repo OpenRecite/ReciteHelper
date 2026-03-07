@@ -1,4 +1,5 @@
-﻿using ReciteHelper.SharedKernel;
+﻿using ReciteHelper.Core.Exceptions;
+using ReciteHelper.SharedKernel;
 
 namespace ReciteHelper.Core.ValueObjects;
 
@@ -39,18 +40,28 @@ public class ExamSettings : ValueObject
 
     protected override void Validate()
     {
+        var errors = new List<string>();
+
         if (QuestionCount < 0)
-            throw new ArgumentException("The score must greater than 0.");
+            errors.Add("The score must greater than 0.");
 
         if (ExamTimeMinutes < 0)
-            throw new ArgumentException("The exam time must not be less than 0.");
+            errors.Add("The exam time must not be less than 0.");
 
         unchecked
         {
             var sumScore = QuestionCount * ScorePerQuestion;
 
             if (sumScore < 0)
-                throw new OverflowException("Total score overflow.");
+                errors.Add("Total score overflow.");
+        }
+
+        if (errors.Any())
+        {
+            throw new ValidationException("Domain verification failed.")
+            {
+                Errors = errors
+            };
         }
     }
 }

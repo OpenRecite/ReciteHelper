@@ -1,4 +1,5 @@
 ﻿using Microsoft.Win32;
+using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Enums;
 using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Model;
@@ -310,7 +311,7 @@ namespace ReciteHelper
                     var project = JsonSerializer.Deserialize<Project>(jsonString!);
                     if (project != null)
                     {
-                        project.LastAccessed = DateTime.Now;
+                        project.UpdateLastAccessed();
                         var quizWindow = new SelectChapterWindow(project);
                         quizWindow.Show();
 

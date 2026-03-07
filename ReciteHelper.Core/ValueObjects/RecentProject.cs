@@ -1,4 +1,5 @@
-﻿using ReciteHelper.SharedKernel;
+﻿using ReciteHelper.Core.Exceptions;
+using ReciteHelper.SharedKernel;
 using System.Text.Json.Serialization;
 
 namespace ReciteHelper.Core.ValueObjects;
@@ -52,7 +53,20 @@ public class RecentProject : ValueObject
 
     protected override void Validate()
     {
+        var errors = new List<string>();
+
         if (string.IsNullOrEmpty(ProjectPath))
-            throw new ArgumentException("The project path cannot be null.");
+            errors.Add("The project path cannot be null.");
+
+        if (LastAccessed > DateTime.Now)
+            errors.Add("The last visit time was subject to relativistic effects.");
+
+        if (errors.Any())
+        {
+            throw new ValidationException("Domain verification failed.")
+            {
+                Errors = errors
+            };
+        }
     }
 }

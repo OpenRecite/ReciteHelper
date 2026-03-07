@@ -2,6 +2,7 @@
 using LlmTornado.Agents;
 using LlmTornado.Chat.Models;
 using Microsoft.Win32;
+using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Enums;
 using ReciteHelper.Core.ValueObjects;
@@ -23,7 +24,8 @@ public partial class CreateProjectWindow : Window
     public string? StoragePath { get; private set; }
     public string? QuestionBankPath { get; private set; }
     public string? FullProjectPath { get; private set; }
-    public Project project;
+
+    public Project project = new();
 
     const int chunkSize = 500;
     private int progress = 0;

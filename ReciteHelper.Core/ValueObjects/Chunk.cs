@@ -1,4 +1,5 @@
-﻿using ReciteHelper.SharedKernel;
+﻿using ReciteHelper.Core.Exceptions;
+using ReciteHelper.SharedKernel;
 
 namespace ReciteHelper.Core.ValueObjects;
 
@@ -41,8 +42,21 @@ public class Chunk : ValueObject
 
     protected override void Validate()
     {
+        var errors = new List<string>();
+
+        if (Content == string.Empty)
+            errors.Add("Chunk cannot be empty.");
         if (Content.Length > 10000)
-            throw new ArgumentException("Chunk is too long");
+            errors.Add("Chunk is too long.");
+
+        if (errors.Any())
+        {
+            throw new ValidationException("Domain verification failed.")
+            {
+                Errors = errors
+            };
+        }
+
     }
 
     public override string ToString()

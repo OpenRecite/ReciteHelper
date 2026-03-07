@@ -1,4 +1,7 @@
-﻿using ReciteHelper.View;
+﻿using Microsoft.Extensions.DependencyInjection;
+using ReciteHelper.Core.Configuration;
+using ReciteHelper.Infrastructure.Configuration;
+using ReciteHelper.View;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -8,9 +11,29 @@ namespace ReciteHelper
 {
     public partial class App : Application
     {
+        private IServiceProvider _serviceProvider;
+        private ConfigOptions _appConfig;
+
         protected void OnStartup(object sender, StartupEventArgs e)
         {
+            var services = new ServiceCollection();
+
+            services.AddSingleton<IConfigService, ConfigService>();
+
+            var tempProvider = services.BuildServiceProvider();
+            LoadConfigurationAsync(tempProvider).GetAwaiter().GetResult();
+
+            services.AddSingleton(_appConfig);
+
+            _serviceProvider = services.BuildServiceProvider();
+
             SetupExceptionHandling();
+        }
+
+        private async Task LoadConfigurationAsync(IServiceProvider tempProvider)
+        {
+            var configService = tempProvider.GetRequiredService<IConfigService>();
+            _appConfig = await configService.LoadAsync();
         }
 
         private void SetupExceptionHandling()

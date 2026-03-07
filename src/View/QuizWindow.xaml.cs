@@ -1,4 +1,5 @@
-﻿using ReciteHelper.Core.Entities;
+﻿using ReciteHelper.Core.Aggregates;
+using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Enums;
 using ReciteHelper.Model;
 using ReciteHelper.Utils;

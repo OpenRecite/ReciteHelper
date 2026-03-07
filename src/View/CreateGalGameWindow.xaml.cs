@@ -1,5 +1,6 @@
 ﻿using AquaAvgFramework.StoryLineComponents;
 using Microsoft.Win32;
+using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Model;
 using ReciteHelper.Utils;
