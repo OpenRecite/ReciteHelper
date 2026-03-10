@@ -7,7 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="jieba.NET" Version="0.42.2" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.3" />
+    <PackageReference Include="Microsoft.SemanticKernel.Abstractions" Version="1.73.0" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Onnx" Version="1.73.0-alpha" />
+    <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.73.0-alpha" />
   </ItemGroup>
 
   <ItemGroup>

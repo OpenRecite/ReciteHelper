@@ -1,6 +1,6 @@
 ﻿using JiebaNet.Segmenter;
 
-namespace ReciteHelper.Utils;
+namespace ReciteHelper.Infrastructure.Algorithms;
 
 public class CosineSimilarity
 {

@@ -160,7 +160,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.3" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.2" />
-    <PackageReference Include="Microsoft.SemanticKernel.Abstractions" Version="1.72.0" />
+    <PackageReference Include="Microsoft.SemanticKernel.Abstractions" Version="1.73.0" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.Onnx" Version="1.72.0-alpha" />
     <PackageReference Include="System.Management" Version="10.0.1" />
   </ItemGroup>

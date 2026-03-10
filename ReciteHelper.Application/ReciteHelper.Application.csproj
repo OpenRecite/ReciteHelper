@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ReciteHelper.Infrastructure\ReciteHelper.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>

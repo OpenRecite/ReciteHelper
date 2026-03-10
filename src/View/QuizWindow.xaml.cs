@@ -358,8 +358,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
 
     private void AnswerTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
-        // TODO: AI verification
-        // Spending this extra money is not worthwhile and requires further consideration.
+        // Trash
     }
 
 
