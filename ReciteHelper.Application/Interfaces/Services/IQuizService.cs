@@ -1,8 +1,8 @@
 ﻿using ReciteHelper.Application.DTOs;
 
-namespace ReciteHelper.Application.Services;
+namespace ReciteHelper.Application.Interfaces.Services;
 
-internal interface IQuizService
+public interface IQuizService
 {
     public Task<AnswerResult> ProcessAnswerAsync();
 }

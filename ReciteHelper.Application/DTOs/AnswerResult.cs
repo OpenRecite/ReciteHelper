@@ -2,7 +2,7 @@
 
 namespace ReciteHelper.Application.DTOs;
 
-internal class AnswerResult
+public class AnswerResult
 {
     public bool IsCorrect { get; set; }
     public int QValue { get; set; }

@@ -2,7 +2,6 @@
 using Microsoft.ML.OnnxRuntime.Tensors;
 using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Entities;
-using ReciteHelper.Model;
 using System.Numerics;
 
 namespace ReciteHelper.Utils;
