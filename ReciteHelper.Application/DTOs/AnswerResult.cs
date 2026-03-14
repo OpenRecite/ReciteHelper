@@ -9,4 +9,5 @@ public class AnswerResult
     public double NewEFValue { get; set; }
     public required ReviewTag ReviewTag { get; set; }
     public double RRelative { get; set; }
+    public double Similarity {  get; set; }
 }

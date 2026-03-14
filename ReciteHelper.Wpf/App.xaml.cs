@@ -32,6 +32,7 @@ public partial class App : System.Windows.Application
 
         services.AddSingleton<IAnswerJudge, SbertModelJudge>();
         services.AddSingleton<IQuizService, QuizService>();
+        services.AddSingleton<IPhonkService, PhonkService>();
         services.AddSingleton<ISuperMemoService, SuperMemoService>(); 
 
         services.AddSingleton<MainWindow>();

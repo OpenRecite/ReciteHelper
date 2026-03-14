@@ -1,5 +1,6 @@
 ﻿using ReciteHelper.Application.DTOs;
 using ReciteHelper.Application.Interfaces.Services;
+using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Infrastructure.Configuration;
 
@@ -19,8 +20,54 @@ public class QuizService : IQuizService
         _superMemoService = superMemoService;
     }
 
-    public Task<AnswerResult> ProcessAnswerAsync()
+    public async Task<AnswerResult> ProcessAnswerAsync(Question question,
+        string userAnswer,
+        DateTime startTime)
     {
-        throw new NotImplementedException();
+        var isCorrect = await _judgeService.JudgeAsync(userAnswer, question.CorrectAnswer!);
+        var similarity = await _judgeService.CalculateSimilarityAsync(userAnswer, question.CorrectAnswer!);
+
+        var config = await _configService.LoadAsync();
+        var duration = DateTime.Now - startTime;
+        var rate = userAnswer.Length / duration.TotalSeconds;
+        var rRelative = rate / config.RStandard;
+
+        // Adjust short answer
+        if (userAnswer.Length <= 12)
+        {
+            var l = userAnswer.Length;
+
+            // WARNING: This is an EMPIRICAL formula
+            var coff = -0.000000464 * Math.Pow(l, 4) + 0.0000746 * Math.Pow(l, 3)
+                - 0.0041 * Math.Pow(l, 2) + 0.0895 * l + 0.2497;
+            
+            rRelative /= coff;
+            rRelative /= 1.099d;
+        }
+
+        rRelative = Math.Min(rRelative, 1.125d);
+
+        // Calculate related values
+        var adjustedSimilarity = isCorrect ? Math.Max(similarity, 83) : similarity;
+        var qValue = await _superMemoService.PredictQualityAsync(rRelative, adjustedSimilarity);
+        var newEFValue = _superMemoService.CalculateEFValue(question.EFValue, qValue);
+
+        var reviewTag = new ReviewTag
+        {
+            Rate = rRelative,
+            Time = DateTime.Now,
+            Similarity = adjustedSimilarity,
+            QValue = qValue
+        };
+
+        return new AnswerResult
+        {
+            IsCorrect = isCorrect,
+            QValue = qValue,
+            NewEFValue = newEFValue,
+            ReviewTag = reviewTag,
+            RRelative = rRelative,
+            Similarity = similarity
+        };
     }
 }
