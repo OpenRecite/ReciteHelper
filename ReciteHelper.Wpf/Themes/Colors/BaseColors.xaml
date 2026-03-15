@@ -1,0 +1,28 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--  Primary colors  -->
+    <Color x:Key="PrimaryColor">#FF2196F3</Color>
+    <Color x:Key="PrimaryLightColor">#FFBBDEFB</Color>
+    <Color x:Key="PrimaryDarkColor">#FF1976D2</Color>
+
+    <!--  Middle colors  -->
+    <Color x:Key="BackgroundColor">#FFF5F5F5</Color>
+    <Color x:Key="SurfaceColor">#FFFFFFFF</Color>
+    <Color x:Key="BorderColor">#FFE0E0E0</Color>
+
+    <!--  Text colors  -->
+    <Color x:Key="TextPrimaryColor">#FF212121</Color>
+    <Color x:Key="TextSecondaryColor">#FF757575</Color>
+    <Color x:Key="TextHintColor">#FF9E9E9E</Color>
+
+    <!--  Convert to brushes  -->
+    <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}" />
+    <SolidColorBrush x:Key="PrimaryLightBrush" Color="{StaticResource PrimaryLightColor}" />
+    <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}" />
+    <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
+    <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" />
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}" />
+
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
+
+</ResourceDictionary>

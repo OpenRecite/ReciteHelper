@@ -1,4 +1,6 @@
-﻿namespace ReciteHelper.Core.Interfaces.Services;
+﻿using ReciteHelper.Core.EventArgs;
+
+namespace ReciteHelper.Core.Interfaces.Services;
 
 public interface IPhonkService
 {

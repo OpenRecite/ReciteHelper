@@ -1,0 +1,28 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--  Success status  -->
+    <Color x:Key="SuccessColor">#FF4CAF50</Color>
+    <Color x:Key="SuccessLightColor">#FFC8E6C9</Color>
+    <Color x:Key="SuccessDarkColor">#FF2E7D32</Color>
+
+    <!--  Error status  -->
+    <Color x:Key="ErrorColor">#FFF44336</Color>
+    <Color x:Key="ErrorLightColor">#FFFFCDD2</Color>
+    <Color x:Key="ErrorDarkColor">#FFB71C1C</Color>
+
+    <!--  Warning status  -->
+    <Color x:Key="WarningColor">#FFFF9800</Color>
+    <Color x:Key="WarningLightColor">#FFFFE0B2</Color>
+    <Color x:Key="WarningDarkColor">#FFF57C00</Color>
+
+    <!--  Info status  -->
+    <Color x:Key="InfoColor">#FF2196F3</Color>
+    <Color x:Key="InfoLightColor">#FFBBDEFB</Color>
+
+    <!--  Convert to brushes  -->
+    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
+    <SolidColorBrush x:Key="SuccessLightBrush" Color="{StaticResource SuccessLightColor}" />
+    <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorColor}" />
+    <SolidColorBrush x:Key="ErrorLightBrush" Color="{StaticResource ErrorLightColor}" />
+
+</ResourceDictionary>

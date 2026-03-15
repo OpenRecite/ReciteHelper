@@ -1,6 +1,8 @@
 ﻿using System;
 
-public class PhonkEventArgs : EventArgs
+namespace ReciteHelper.Core.EventArgs;
+
+public class PhonkEventArgs : System.EventArgs
 {
     public string ImageUri { get; }
     public string SoundFile { get; }

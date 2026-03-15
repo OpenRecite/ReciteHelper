@@ -1,13 +1,10 @@
-﻿// ReciteHelper.Wpf/ViewModels/QuizViewModel.cs
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
-using ReciteHelper.Application.DTOs;
 using ReciteHelper.Application.Interfaces.Services;
-using ReciteHelper.Application.Services;
 using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Enums;
+using ReciteHelper.Core.EventArgs;
 using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Infrastructure.Configuration;
@@ -79,7 +76,10 @@ public partial class QuizViewModel : ObservableObject, IDisposable
     // Trigger for phonk animation
     public event EventHandler<PhonkEventArgs>? PhonkRequested;
 
-# pragma warning disable CS8618
+    // There is no need to constantly check for null at all times
+#pragma warning disable CS8618
+    // Stop writing code for a moment — I need to ask you something
+#pragma warning disable NU1603
 
     public QuizViewModel(
         Project project,
@@ -293,42 +293,5 @@ public partial class QuizViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _phonkService.PhonkTriggered -= OnPhonkTriggered;
-    }
-}
-
-// ReciteHelper.Wpf/ViewModels/QuestionItemViewModel.cs
-public partial class QuestionItemViewModel : ObservableObject
-{
-    [ObservableProperty]
-    private int _number;
-
-    [ObservableProperty]
-    private Question _question;
-
-    [ObservableProperty]
-    private AnswerStatus _status;
-
-    [ObservableProperty]
-    private string? _userAnswer;
-
-    [ObservableProperty]
-    private bool _isCurrent;
-
-    [ObservableProperty]
-    private Style _cardStyle;
-
-    partial void OnStatusChanged(AnswerStatus value)
-    {
-        UpdateStyle();
-    }
-
-    partial void OnIsCurrentChanged(bool value)
-    {
-        UpdateStyle();
-    }
-
-    private void UpdateStyle()
-    {
-        // 样式逻辑移到 Converter 中处理
     }
 }

@@ -1,12 +1,316 @@
-﻿<Window x:Class="ReciteHelper.Wpf.Views.QuizWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:ReciteHelper.Wpf.Views"
-        mc:Ignorable="d"
-        Title="QuizWindow" Height="450" Width="800">
+﻿<Window
+    x:Class="ReciteHelper.Wpf.Views.QuizWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="clr-namespace:ReciteHelper.Wpf.Converters"
+    xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+    xmlns:local="clr-namespace:ReciteHelper.Wpf.Behaviors"
+    Title="{Binding WindowTitle}"
+    Width="1000"
+    Height="700"
+    Background="#F8F9FA"
+    WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Generic.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
     <Grid>
-        
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!--  Phonk Animation  -->
+        <Image
+            x:Name="PhonkImage"
+            Grid.ColumnSpan="2"
+            Width="256"
+            Height="256"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Panel.ZIndex="1000"
+            IsHitTestVisible="False"
+            Visibility="Collapsed">
+            <Image.RenderTransform>
+                <TranslateTransform x:Name="ImageTranslate" />
+            </Image.RenderTransform>
+        </Image>
+        <MediaElement
+            x:Name="PhonkPlayer"
+            Width="0"
+            Height="0"
+            LoadedBehavior="Manual"
+            UnloadedBehavior="Manual"
+            Visibility="Collapsed" />
+
+        <!--  左侧答题卡区域  -->
+        <Border
+            Grid.Column="0"
+            Background="White"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="0,0,1,0">
+            <DockPanel>
+                <Border
+                    Padding="16,12"
+                    Background="#F8F9FA"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="0,0,0,1"
+                    DockPanel.Dock="Top">
+                    <TextBlock
+                        FontSize="14"
+                        FontWeight="Bold"
+                        Foreground="#495057"
+                        Text="答题卡" />
+                </Border>
+
+                <ScrollViewer Padding="16" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Questions}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button
+                                    Margin="4,4"
+                                    Command="{Binding DataContext.SwitchToQuestionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding Number}"
+                                    Content="{Binding Number}"
+                                    Style="{Binding CardStyle, Converter={StaticResource AnswerStatusToStyleConverter}}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <Border
+                    Padding="16,12"
+                    Background="#F8F9FA"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="0,1,0,0"
+                    DockPanel.Dock="Bottom">
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="12"
+                        Foreground="#6C757D"
+                        Text="{Binding StatisticsText}" />
+                </Border>
+            </DockPanel>
+        </Border>
+
+        <!--  Main  -->
+        <Grid Grid.Column="1" Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!--  Nav  -->
+            <Border
+                Grid.Row="0"
+                Padding="16"
+                Background="White"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="4">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel
+                        Grid.Column="0"
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal">
+                        <TextBlock
+                            FontSize="13"
+                            Foreground="#6C757D"
+                            Text="第" />
+                        <TextBlock
+                            Margin="4,0"
+                            FontSize="13"
+                            FontWeight="Bold"
+                            Foreground="#007ACC"
+                            Text="{Binding CurrentIndexPlusOne}" />
+                        <TextBlock
+                            FontSize="13"
+                            Foreground="#6C757D"
+                            Text="题 / 共" />
+                        <TextBlock
+                            Margin="4,0"
+                            FontSize="13"
+                            FontWeight="Bold"
+                            Foreground="#495057"
+                            Text="{Binding TotalQuestions}" />
+                        <TextBlock
+                            FontSize="13"
+                            Foreground="#6C757D"
+                            Text="题" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button
+                            Margin="20,0,0,0"
+                            Command="{Binding ClearRecordsCommand}"
+                            Content="清空记录"
+                            Style="{StaticResource SecondaryButtonStyle}" />
+                        <Button
+                            Margin="50,0,0,0"
+                            Command="{Binding PrevQuestionCommand}"
+                            Content="上一题"
+                            IsEnabled="{Binding IsPrevEnabled}"
+                            Style="{StaticResource SecondaryButtonStyle}" />
+                        <Button
+                            Command="{Binding NextQuestionCommand}"
+                            Content="下一题"
+                            IsEnabled="{Binding IsNextEnabled}"
+                            Style="{StaticResource PrimaryButtonStyle}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!--  Content  -->
+            <Border
+                Grid.Row="1"
+                Margin="0,16,0,0"
+                Padding="20"
+                Background="White"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="4">
+                <Grid>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <TextBlock
+                            FontSize="14"
+                            Foreground="#333333"
+                            LineHeight="24"
+                            Text="{Binding CurrentQuestion.Question.Text}"
+                            TextWrapping="Wrap" />
+                    </ScrollViewer>
+                    <Label
+                        Margin="10"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Content="{Binding QValueDisplay}"
+                        FontFamily="Arial Black"
+                        Foreground="Gray" />
+                </Grid>
+            </Border>
+
+            <!--  Answer Input Area  -->
+            <Border
+                Grid.Row="2"
+                Margin="0,16,0,0"
+                Padding="20"
+                Background="White"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="4">
+                <StackPanel>
+                    <TextBlock
+                        Margin="0,0,0,12"
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        Foreground="#495057"
+                        Text="请输入答案：" />
+                    <TextBox
+                        Height="80"
+                        Padding="12"
+                        AcceptsReturn="True"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        FontSize="13"
+                        IsEnabled="{Binding IsAnswerEnabled}"
+                        Text="{Binding AnswerText, UpdateSourceTrigger=PropertyChanged}"
+                        TextWrapping="Wrap"
+                        VerticalScrollBarVisibility="Auto" />
+                    <StackPanel
+                        Margin="0,12,0,0"
+                        HorizontalAlignment="Right"
+                        Orientation="Horizontal">
+                        <Button
+                            Width="80"
+                            Height="40"
+                            Command="{Binding SubmitAnswerCommand}"
+                            Content="提交答案"
+                            Style="{StaticResource PrimaryButtonStyle}" />
+                        <Button
+                            Width="80"
+                            Height="40"
+                            Margin="20,0,0,0"
+                            Command="{Binding SkipCommand}"
+                            Content="跳过"
+                            Style="{StaticResource SecondaryButtonStyle}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!--  Results  -->
+            <Border
+                Grid.Row="3"
+                Margin="0,16,0,0"
+                Padding="16"
+                Background="{Binding ResultBackground}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="4"
+                Visibility="{Binding ResultVisibility, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock
+                        Grid.Row="0"
+                        Margin="0,0,0,8"
+                        FontSize="14"
+                        FontWeight="Bold"
+                        Foreground="{Binding ResultForeground}"
+                        Text="{Binding ResultTitle}" />
+
+                    <StackPanel
+                        Grid.Row="1"
+                        Margin="0,0,0,4"
+                        Orientation="Horizontal">
+                        <TextBlock
+                            MinWidth="80"
+                            FontWeight="SemiBold"
+                            Foreground="#495057"
+                            Text="您的答案：" />
+                        <TextBlock
+                            Foreground="#333333"
+                            Text="{Binding UserAnswer}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal">
+                        <TextBlock
+                            MinWidth="80"
+                            FontWeight="SemiBold"
+                            Foreground="#495057"
+                            Text="正确答案：" />
+                        <TextBlock
+                            Foreground="#333333"
+                            Text="{Binding CorrectAnswer}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!--  Phonk triggers  -->
+        <i:Interaction.Triggers>
+            <i:EventTrigger EventName="PhonkRequested">
+                <local:PhonkAnimationAction TargetImage="{Binding ElementName=PhonkImage}" TargetPlayer="{Binding ElementName=PhonkPlayer}" />
+            </i:EventTrigger>
+        </i:Interaction.Triggers>
     </Grid>
 </Window>

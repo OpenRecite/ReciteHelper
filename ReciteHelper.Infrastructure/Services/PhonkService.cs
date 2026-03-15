@@ -1,4 +1,5 @@
-﻿using ReciteHelper.Core.Interfaces.Services;
+﻿using ReciteHelper.Core.EventArgs;
+using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Infrastructure.Configuration;
 
 namespace ReciteHelper.Infrastructure.Services;
