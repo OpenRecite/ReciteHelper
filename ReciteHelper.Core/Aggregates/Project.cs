@@ -2,39 +2,41 @@
 using ReciteHelper.SharedKernel;
 using System.Text.Json.Serialization;
 
-namespace ReciteHelper.Core.Aggregates;
-
-public class Project : AggregateRoot
+namespace ReciteHelper.Core.Aggregates
 {
-    [JsonConstructor]
-    public Project() { }
-
-    [JsonPropertyName("name")]
-    public string? ProjectName { get; set; }
-
-    [JsonPropertyName("path")]
-    public string? StoragePath { get; set; }
-
-    [JsonPropertyName("bankfile")]
-    public string? QuestionBankPath { get; set; }
-
-    [JsonPropertyName("chapter")]
-    public List<Chapter>? Chapters { get; set; }
-
-    [JsonPropertyName("last_accessed")]
-    public DateTime LastAccessed { get; private set; }
-
-    public List<Question> ExportQuestions()
+    [method: JsonConstructor]
+    public class Project() : AggregateRoot
     {
-        List<Question> questions = [];
+        [JsonPropertyName("name")]
+        public string? ProjectName { get; set; }
 
-        foreach (var chapter in Chapters!)
-            questions.AddRange(chapter.Questions!);
-        return questions;
-    }
+        [JsonPropertyName("path")]
+        public string? StoragePath { get; set; }
 
-    public void UpdateLastAccessed()
-    {
-        LastAccessed = DateTime.Now;
+        [JsonPropertyName("bankfile")]
+        public string? QuestionBankPath { get; set; }
+
+        [JsonPropertyName("chapter")]
+        public List<Chapter>? Chapters { get; set; }
+
+        [JsonPropertyName("last_accessed")]
+        public DateTime LastAccessed { get; private set; }
+
+        public List<Question> ExportQuestions()
+        {
+            List<Question> questions = [];
+
+            foreach (Chapter chapter in Chapters!)
+            {
+                questions.AddRange(chapter.Questions!);
+            }
+
+            return questions;
+        }
+
+        public void UpdateLastAccessed()
+        {
+            LastAccessed = DateTime.Now;
+        }
     }
 }

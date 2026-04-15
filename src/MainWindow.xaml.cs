@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Enums;
 using ReciteHelper.Core.ValueObjects;
@@ -259,7 +259,7 @@ namespace ReciteHelper
                     var outputFolder = Path.Combine(baseDirectory, "temp");
 
                     Directory.CreateDirectory(outputFolder);
-                    Directory.Clear(outputFolder);
+                    DirectoryExtensions.Clear(outputFolder);
                     ZipFile.ExtractToDirectory(exportFile, outputFolder);
 
                     // Why use a manifest file?

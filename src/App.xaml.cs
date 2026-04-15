@@ -1,6 +1,8 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using ReciteHelper.Core.Configuration;
+using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Infrastructure.Configuration;
+using ReciteHelper.Infrastructure.Services;
 using ReciteHelper.View;
 using System.Diagnostics;
 using System.IO;
@@ -19,6 +21,17 @@ namespace ReciteHelper
             var services = new ServiceCollection();
 
             services.AddSingleton<IConfigService, ConfigService>();
+            
+            // 核心服务
+            services.AddScoped<ISuperMemoService, SuperMemoService>();
+            services.AddScoped<IAnswerJudge, SbertModelJudge>();
+            services.AddScoped<IPhonkService, PhonkService>();
+            
+            // 新迁移的服务
+            services.AddScoped<ISimilarityCalculator, CosineSimilarityCalculator>();
+            services.AddScoped<ITextExtractor, TextExtractor>();
+            services.AddScoped<IOcrService, OcrService>();
+            services.AddScoped<IParser, ParserService>();
 
             var tempProvider = services.BuildServiceProvider();
             LoadConfigurationAsync(tempProvider).GetAwaiter().GetResult();

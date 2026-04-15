@@ -1,4 +1,4 @@
-﻿using AquaAvgFramework.StoryLineComponents;
+using AquaAvgFramework.StoryLineComponents;
 using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.ValueObjects;
@@ -201,7 +201,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
 
         // Create output directory
         var path = Path.Combine(_currentProject.StoragePath, _currentProject.ProjectName, "output");
-        Directory.Clear(path);
+        DirectoryExtensions.Clear(path);
         Directory.CreateDirectory(path);
 
         // Create manifest file
