@@ -4,7 +4,6 @@ using ReciteHelper.Utils;
 using ReciteHelper.ViewModel;
 using System.ComponentModel;
 using System.IO;
-using System.Linq;
 using System.Windows;
 
 namespace ReciteHelper.View;
@@ -30,35 +29,21 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
         UpdateDisplay();
     }
 
-    private async Task CalculateStatistics()
+    private void CalculateStatistics()
     {
         _totalQuestions = _examQuestions.Count;
-
-        if (_totalQuestions == 0)
-        {
-            _correctCount = 0;
-            _wrongCount = 0;
-            _accuracy = 0;
-            return;
-        }
-
-        var judgeTasks = _examQuestions.Select(q => JudgeAnswer.RunAsync(q));
-        bool[] results = await Task.WhenAll(judgeTasks);
-
-        _correctCount = results.Count(r => r);
+        _correctCount = _examQuestions.Count(q => JudgeAnswer.Run(q));
         _wrongCount = _totalQuestions - _correctCount;
-        _accuracy = (_correctCount * 100.0) / _totalQuestions;
+        _accuracy = _totalQuestions > 0 ? (_correctCount * 100.0) / _totalQuestions : 0;
     }
 
-    private async Task InitializeReviewItems()
+    private void InitializeReviewItems()
     {
         var reviewItems = new List<ReviewItemViewModel>();
 
         for (int i = 0; i < _examQuestions.Count; i++)
         {
             var examQuestion = _examQuestions[i];
-            var result = await JudgeAnswer.RunAsync(examQuestion);
-
             var reviewItem = new ReviewItemViewModel
             {
                 QuestionNumber = i + 1,
@@ -66,8 +51,8 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
                 UserAnswer = examQuestion.UserAnswer ?? "未作答",
                 CorrectAnswer = examQuestion.Question?.CorrectAnswer ?? "正确答案缺失",
                 Explanation = "无解析",
-                IsCorrect = result,
-                ItemStyle = result ?
+                IsCorrect = JudgeAnswer.Run(examQuestion),
+                ItemStyle = JudgeAnswer.Run(examQuestion) ?
                     (Style)FindResource("CorrectAnswerStyle") :
                     (Style)FindResource("WrongAnswerStyle")
             };
@@ -117,7 +102,7 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private async Task ExportReportToFile(string filePath)
+    private void ExportReportToFile(string filePath)
     {
         using var writer = new StreamWriter(filePath);
 
@@ -134,7 +119,7 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
         for (int i = 0; i < _examQuestions.Count; i++)
         {
             var question = _examQuestions[i];
-            var isCorrect = await JudgeAnswer.RunAsync(question);
+            var isCorrect = JudgeAnswer.Run(question);
 
             writer.WriteLine($"第{i + 1}题 {(isCorrect ? "✓" : "✗")}");
             writer.WriteLine($"题目：{question.Question?.Text}");

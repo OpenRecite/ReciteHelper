@@ -1,21 +1,32 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="FuzzyString" Version="1.0.0" />
+    <PackageReference Include="Docnet.Core" Version="2.6.0" />
+    <PackageReference Include="FreeSpire.Doc" Version="12.2.0" />
+    <PackageReference Include="FreeSpire.Presentation" Version="9.3.0" />
     <PackageReference Include="jieba.NET" Version="0.42.2" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.3" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="5.0.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.2" />
     <PackageReference Include="Microsoft.SemanticKernel.Abstractions" Version="1.73.0" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.Onnx" Version="1.73.0-alpha" />
     <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.73.0-alpha" />
+    <PackageReference Include="System.Management" Version="10.0.1" />
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Utilities\OCRProvider.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\external\AquaAvgFramework\AquaAvgFramework.csproj" />
+    <ProjectReference Include="..\ReciteHelper.Application\ReciteHelper.Application.csproj" />
     <ProjectReference Include="..\ReciteHelper.Core\ReciteHelper.Core.csproj" />
   </ItemGroup>
 

@@ -1,0 +1,18 @@
+﻿<Config>
+	
+	<Version>2</Version>
+	
+	<DeepSeekKey>%Environment.GetEnvironmentVariable("DSAPI")%</DeepSeekKey>
+	<MissingStrategy>Ignore</MissingStrategy>
+	
+	<OCRAccess></OCRAccess>
+	<OCRSecret></OCRSecret>
+	
+	<PhonkOptions>
+		<EnablePhonk>false</EnablePhonk>
+		<WrongCount>3</WrongCount>
+	</PhonkOptions>
+	
+	<RStandard>45</RStandard>
+	
+</Config>

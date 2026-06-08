@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using ReciteHelper.Application.Interfaces.Configuration;
 using ReciteHelper.Core.Configuration;
 using ReciteHelper.Infrastructure.Configuration;
 using ReciteHelper.View;
@@ -9,7 +10,7 @@ using System.Windows.Threading;
 
 namespace ReciteHelper
 {
-    public partial class App : Application
+    public partial class App : System.Windows.Application
     {
         private IServiceProvider _serviceProvider;
         private ConfigOptions _appConfig;
@@ -149,7 +150,7 @@ namespace ReciteHelper
                 {
                     Dispatcher.Invoke(() =>
                     {
-                        Application.Current.Shutdown(1);
+                        System.Windows.Application.Current.Shutdown(1);
                     });
                 });
             }

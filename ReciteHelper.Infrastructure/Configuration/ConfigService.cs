@@ -1,6 +1,7 @@
-﻿using Microsoft.Extensions.Options;
+﻿using ReciteHelper.Application.Interfaces.Configuration;
 using ReciteHelper.Core.Configuration;
 using ReciteHelper.Core.Exceptions;
+using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 
 namespace ReciteHelper.Infrastructure.Configuration;
@@ -18,10 +19,6 @@ public class ConfigService : IConfigService
 
     public async Task<ConfigOptions> LoadAsync()
     {
-        // This exclamation mark is not suppressing null checks
-        // It's just emphasizing that this part hasn't been reconstructed yet
-        return new()!;
-
         if (!File.Exists(_configPath))
             return new ConfigOptions();
 
@@ -31,7 +28,11 @@ public class ConfigService : IConfigService
             await using var stream = File.OpenRead(_configPath);
             var config = (ConfigOptions?)serializer.Deserialize(stream);
 
-            return config ?? new ConfigOptions();
+            if (config is null)
+                return new ConfigOptions();
+
+            config.DeepSeekKey = ResolveConfigText(config.DeepSeekKey);
+            return config;
         }
         catch (Exception ex)
         {
@@ -45,5 +46,20 @@ public class ConfigService : IConfigService
         var serializer = new XmlSerializer(typeof(ConfigOptions));
         await using var stream = File.Create(_configPath);
         serializer.Serialize(stream, config);
+    }
+
+    private static string? ResolveConfigText(string? text)
+    {
+        if (string.IsNullOrEmpty(text) || !text.Contains('%'))
+            return text;
+
+        var match = Regex.Match(
+            text,
+            "^%\\s*Environment\\.GetEnvironmentVariable\\(\"(?<name>[A-Za-z_][A-Za-z0-9_]*)\"\\)\\s*%$");
+
+        if (!match.Success)
+            return text;
+
+        return Environment.GetEnvironmentVariable(match.Groups["name"].Value);
     }
 }

@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ReciteHelper.Infrastructure\ReciteHelper.Infrastructure.csproj" />
+    <ProjectReference Include="..\ReciteHelper.Core\ReciteHelper.Core.csproj" />
   </ItemGroup>
 
 </Project>

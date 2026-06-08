@@ -255,7 +255,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
         var questionList = Supermemo.GenerateReview(_currentProject, 30);
 
         var quizWindow = new QuizWindow(_currentProject, questionList)
-        { Owner = Application.Current.MainWindow };
+        { Owner = System.Windows.Application.Current.MainWindow };
         quizWindow.Show();
         Close();
     }

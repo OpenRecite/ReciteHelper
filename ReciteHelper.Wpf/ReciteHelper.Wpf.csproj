@@ -6,10 +6,14 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Images\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="LlmTornado" Version="3.8.12" />
+    <PackageReference Include="LlmTornado.Agents" Version="1.0.11" />
+    <PackageReference Include="Markdig.Wpf" Version="0.5.0.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.4" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.4" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.4" />
@@ -18,8 +22,25 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\external\AquaAvgFramework\AquaAvgFramework.csproj" />
     <ProjectReference Include="..\ReciteHelper.Application\ReciteHelper.Application.csproj" />
     <ProjectReference Include="..\ReciteHelper.Infrastructure\ReciteHelper.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Config.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Resource Include="Images\**\*.png" />
+    <Content Include="Images\Phonk\Soundfx\*.mp3">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\Prompts\*.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

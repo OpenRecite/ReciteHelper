@@ -1,5 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ReciteHelper.Application.Interfaces.Configuration;
 using ReciteHelper.Application.Interfaces.Services;
 using ReciteHelper.Application.Services;
 using ReciteHelper.Core.Interfaces.Services;
@@ -19,6 +20,7 @@ public partial class App : System.Windows.Application
 
         var configService = new ConfigService();
         var appConfig = await configService.LoadAsync();
+        Models.Config.Use(appConfig);
 
         services.AddLogging(builder =>
         {

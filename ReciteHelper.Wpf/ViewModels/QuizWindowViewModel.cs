@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ReciteHelper.Application.Interfaces.Configuration;
 using ReciteHelper.Application.Interfaces.Services;
 using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Entities;
@@ -7,7 +8,6 @@ using ReciteHelper.Core.Enums;
 using ReciteHelper.Core.EventArgs;
 using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Core.ValueObjects;
-using ReciteHelper.Infrastructure.Configuration;
 using ReciteHelper.Wpf.Services;
 using System.Collections.ObjectModel;
 using System.Windows;

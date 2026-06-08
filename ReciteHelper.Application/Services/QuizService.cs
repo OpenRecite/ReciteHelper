@@ -1,8 +1,8 @@
 ﻿using ReciteHelper.Application.DTOs;
+using ReciteHelper.Application.Interfaces.Configuration;
 using ReciteHelper.Application.Interfaces.Services;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Interfaces.Services;
-using ReciteHelper.Infrastructure.Configuration;
 
 namespace ReciteHelper.Application.Services;
 

@@ -160,7 +160,7 @@ public partial class ExamWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private async Task CalculateScore()
+    private void CalculateScore()
     {
         _correctCount = 0;
 
@@ -168,7 +168,7 @@ public partial class ExamWindow : Window, INotifyPropertyChanged
         {
             if (string.IsNullOrEmpty(question.UserAnswer)) continue;
 
-            var isCorrect = await JudgeAnswer.RunAsync(question.UserAnswer,question.Question!.CorrectAnswer!);
+            var isCorrect = JudgeAnswer.Run(question.UserAnswer,question.Question!.CorrectAnswer!);
             if (isCorrect)
                 _correctCount++;
         }

@@ -227,7 +227,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         currentQuestion.UserAnswer = AnswerTextBox.Text.Trim();
 
         // Determine whether the answer is roughly similar to the given answer
-        var isCorrect = await JudgeAnswer.RunAsync(currentQuestion);
+        var isCorrect = JudgeAnswer.Run(currentQuestion);
         currentQuestion.Status = isCorrect ? AnswerStatus.Correct : AnswerStatus.Wrong;
 
         // Show result
@@ -236,7 +236,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         UpdateAnswerCardStyles();
 
         // Record data
-        var similarity = await JudgeAnswer.CalculateAsync(currentQuestion);
+        var similarity = JudgeAnswer.CalculateSimilarity(currentQuestion);
         var duration = DateTime.Now - _startTime;
         var rate = currentQuestion.UserAnswer.Length / duration.TotalSeconds;
         var rStandard = Config.Configure.RStandard;

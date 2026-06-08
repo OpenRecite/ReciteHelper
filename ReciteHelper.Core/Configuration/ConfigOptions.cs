@@ -1,10 +1,9 @@
 ﻿using ReciteHelper.Core.Enums;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Xml.Serialization;
 
 namespace ReciteHelper.Core.Configuration;
 
+[XmlRoot("Config")]
 public class ConfigOptions
 {
     public const string SectionName = "ReciteHelper";
@@ -15,5 +14,6 @@ public class ConfigOptions
     public string? OCRSecret { get; set; }
     public int RStandard { get; set; } = 60;
     public PhonkOptions PhonkOptions { get; set; } = new();
+    [XmlElement("MissingStrategy")]
     public MissingStrategy Strategy { get; set; } = MissingStrategy.Ignore;
 }
