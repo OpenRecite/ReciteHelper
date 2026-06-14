@@ -1,5 +1,13 @@
 # ReciteHelper
 
+<div style="display: flex; align-items: center; justify-content: center;">
+  <img src="docs/Resources/Logos/clublogo.png" style="height: 50px; width: auto;" />
+  <span style="margin: 0 15px;">&nbsp;</span>
+  <img src="docs/Resources/Logos/caylogo.png" style="height: 50px; width: auto;" />
+</div>
+
+<br/>
+
 ReciteHelper 是一个基于 AI 的开源桌面记忆辅助软件，能自动解析课程内容、聚合知识点，帮助用户进行高效学习和复习，适合学生、考研党、自学者等使用。 
 
 ReciteHelper 承诺永久保持开源、免费的性质。如果您感觉该项目对您有帮助，点个 star 就是对开发者最大的支持。
@@ -110,8 +118,9 @@ ReciteHelper 承诺永久保持开源、免费的性质。如果您感觉该项�
 | 头像 | 学校或单位 | 昵称 | 贡献内容 |
 |:------:|:----------:|:-----:|------------|
 | <img src="docs\Resources\Thanks\01.jpg" width="60" height="60" style="border-radius:50%;border:2px solid #4fc3f7"> | 南昌航空航天大学 |  **Sati** | 帮助测试并解决了多PDF的处理问题 |
-| <img src="docs\Resources\Thanks\02.jpg" width="60" height="60" style="border-radius:50%;border:2px solid #ffb74d"> | 海南大学 | **Mrwhite3142** | 帮助测试发现了文件无法正常处理的问题（暂未能复现） |
+| <img src="docs\Resources\Thanks\02.jpg" width="60" height="60" style="border-radius:50%;border:2px solid #55b74d"> | 海南大学 | **Mrwhite3142** | 帮助测试发现了文件无法正常处理的问题（暂未能复现） |
 | <img src="docs\Resources\Thanks\03.png" width="60" height="60" style="border-radius:50%;border:2px solid #ffb74d"> | / | **oife** | 帮助测试并解决了无法正常加载项目和测试代码未删除的问题 |
+| <img src="docs\Resources\Thanks\04.jpg" width="60" height="60" style="border-radius:50%;border:2px solid #aa274d"> | 中国民航大学 | **AcE77505** | 发现并为项目不支持部分旧版本 Windows 的问题提供了解决方案 |
 
 
 </div>
