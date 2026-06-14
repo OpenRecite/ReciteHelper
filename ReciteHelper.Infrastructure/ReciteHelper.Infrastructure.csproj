@@ -12,6 +12,8 @@
     <PackageReference Include="FreeSpire.Doc" Version="12.2.0" />
     <PackageReference Include="FreeSpire.Presentation" Version="9.3.0" />
     <PackageReference Include="jieba.NET" Version="0.42.2" />
+    <PackageReference Include="LlmTornado" Version="3.8.12" />
+    <PackageReference Include="LlmTornado.Agents" Version="1.0.11" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="5.0.0" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.2" />
     <PackageReference Include="Microsoft.SemanticKernel.Abstractions" Version="1.73.0" />

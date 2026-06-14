@@ -1,12 +1,10 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
+using ReciteHelper.Application.Interfaces.Services;
 using ReciteHelper.Core.Enums;
-using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Wpf.Models;
-using ReciteHelper.Infrastructure.Utilities;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -17,11 +15,14 @@ namespace ReciteHelper.Wpf.Views;
 /// </summary>
 public partial class FileMergeWindow : Window, INotifyPropertyChanged
 {
-    private ObservableCollection<FileItem> _fileItems;
+    private readonly IFileMergeService _fileMergeService;
+    private readonly ObservableCollection<FileItem> _fileItems;
     private long _totalFileSize;
 
-    public FileMergeWindow()
+    public FileMergeWindow(IFileMergeService fileMergeService)
     {
+        _fileMergeService = fileMergeService;
+
         InitializeComponent();
         _fileItems = new ObservableCollection<FileItem>();
         FilesItemsControl.ItemsSource = _fileItems;
@@ -42,22 +43,12 @@ public partial class FileMergeWindow : Window, INotifyPropertyChanged
         {
             foreach (var filePath in openFileDialog.FileNames)
             {
-                if (IsSupportedFileType(filePath) && !FileExistsInList(filePath))
-                {
+                if (_fileMergeService.IsSupportedFile(filePath) && !FileExistsInList(filePath))
                     AddFileItem(filePath);
-                }
             }
 
             UpdateDisplay();
         }
-    }
-
-    private bool IsSupportedFileType(string filePath)
-    {
-        var extension = Path.GetExtension(filePath).ToLower();
-        List<string> support = [".docx", ".pptx", ".pdf", ".txt", ".meg"];
-
-        return support.Contains(extension);
     }
 
     private bool FileExistsInList(string filePath)
@@ -93,7 +84,6 @@ public partial class FileMergeWindow : Window, INotifyPropertyChanged
 
     private string FormatFileSize(long bytes)
     {
-        // Go get that 1TB, I'll wait
         string[] sizes = ["B", "KB", "MB", "GB"];
         double len = bytes;
         int order = 0;
@@ -101,7 +91,7 @@ public partial class FileMergeWindow : Window, INotifyPropertyChanged
         while (len >= 1024 && order < sizes.Length - 1)
         {
             order++;
-            len = len / 1024;
+            len /= 1024;
         }
 
         return $"{len:0.##} {sizes[order]}";
@@ -123,7 +113,8 @@ public partial class FileMergeWindow : Window, INotifyPropertyChanged
 
     private void ClearAllButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_fileItems.Count == 0) return;
+        if (_fileItems.Count == 0)
+            return;
 
         var result = MessageBox.Show($"确定要清空所有文件吗？共{_fileItems.Count}个文件。",
             "确认清空", MessageBoxButton.YesNo, MessageBoxImage.Question);
@@ -136,7 +127,7 @@ public partial class FileMergeWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private void MergeButton_Click(object sender, RoutedEventArgs e)
+    private async void MergeButton_Click(object sender, RoutedEventArgs e)
     {
         if (_fileItems.Count == 0)
         {
@@ -145,23 +136,9 @@ public partial class FileMergeWindow : Window, INotifyPropertyChanged
             return;
         }
 
-        var clusterType = ModeButton.Content.ToString()!.Contains("Sequential") ? FileClusterType.Sequential : FileClusterType.Discrete;
-        var contens = new List<string>();
-
-        foreach (var item in _fileItems)
-        {
-            if (item.FileExtension == ".meg")
-            {
-                var megFile = (MergeFile)ExtractText.FromAutomatic(item.FilePath);
-                contens.AddRange(megFile.Contents);
-            }
-            else
-            {
-                contens.Add(ExtractText.FromAutomatic(item.FilePath));
-            }
-        }
-
-        var files = MergeFile.Create(contens, clusterType);
+        var clusterType = ModeButton.Content.ToString()!.Contains("Sequential")
+            ? FileClusterType.Sequential
+            : FileClusterType.Discrete;
 
         var saveFileDialog = new SaveFileDialog
         {
@@ -172,28 +149,30 @@ public partial class FileMergeWindow : Window, INotifyPropertyChanged
 
         if (saveFileDialog.ShowDialog() == true)
         {
-            File.WriteAllText(saveFileDialog.FileName, JsonSerializer.Serialize<MergeFile>(files));
-            MessageBox.Show("文件合并成功！", "合并成功",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            try
+            {
+                await _fileMergeService.MergeAsync(SelectedFiles, clusterType, saveFileDialog.FileName);
+                MessageBox.Show("文件合并成功！", "合并成功",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"文件合并失败：{ex.Message}", "合并失败",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
-        // Trigger the merge event
         OnMergeRequested();
     }
 
     private void UpdateDisplay()
     {
-        // Update the file serial number
-        for (int i = 0; i < _fileItems.Count; i++)
-        {
+        for (var i = 0; i < _fileItems.Count; i++)
             _fileItems[i].Index = i + 1;
-        }
 
-        // Update statistical information
         FilesCountText.Text = $"已添加 {_fileItems.Count} 个文件";
         TotalSizeText.Text = $"总大小：{FormatFileSize(_totalFileSize)}";
 
-        // Update the status of the button
         ClearAllButton.IsEnabled = _fileItems.Count > 0;
         MergeButton.IsEnabled = _fileItems.Count >= 1;
 
@@ -202,14 +181,16 @@ public partial class FileMergeWindow : Window, INotifyPropertyChanged
 
     public List<string> SelectedFiles => _fileItems.Select(item => item.FilePath).ToList();
 
-    public event EventHandler MergeRequested;
+    public event EventHandler? MergeRequested;
+
     protected virtual void OnMergeRequested()
     {
         MergeRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    public event PropertyChangedEventHandler PropertyChanged;
-    protected virtual void OnPropertyChanged(string propertyName = null)
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected virtual void OnPropertyChanged(string propertyName = "")
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }

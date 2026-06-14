@@ -1,3 +1,4 @@
+﻿using ReciteHelper.Application.Interfaces.Services;
 using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.ValueObjects;
@@ -10,11 +11,22 @@ using System.Windows.Media;
 namespace ReciteHelper.Wpf.Views {
     public partial class ExamSettingWindow : Window, INotifyPropertyChanged
     {
+        private readonly IExamAnswerService _examAnswerService;
+        private readonly IExamPaperService _examPaperService;
+        private readonly IExamSettingsService _examSettingsService;
         private Project _project;
         private List<ChapterWeightSetting> _chapterWeights;
 
-        public ExamSettingWindow(Project project)
+        public ExamSettingWindow(
+            Project project,
+            IExamAnswerService examAnswerService,
+            IExamPaperService examPaperService,
+            IExamSettingsService examSettingsService)
         {
+            _examAnswerService = examAnswerService;
+            _examPaperService = examPaperService;
+            _examSettingsService = examSettingsService;
+
             InitializeComponent();
             _project = project;
 
@@ -188,7 +200,7 @@ namespace ReciteHelper.Wpf.Views {
             }
         }
 
-        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             if (!ValidateInputs())
                 return;
@@ -203,14 +215,22 @@ namespace ReciteHelper.Wpf.Views {
                 _chapterWeights.ToDictionary(c => c.ChapterName, c => c.Weight)
             );
 
-            // Here you can save settings to a file or database
-            SaveExamSettings(examSettings);
+            try
+            {
+                await _examSettingsService.SaveAsync(_project, examSettings);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"保存考试设置失败：{ex.Message}", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
 
             MessageBox.Show("考试设置已保存！", "保存成功",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void StartExamButton_Click(object sender, RoutedEventArgs e)
+        private async void StartExamButton_Click(object sender, RoutedEventArgs e)
         {
             if (!ValidateInputs())
                 return;
@@ -224,9 +244,19 @@ namespace ReciteHelper.Wpf.Views {
                 int.Parse(ScorePerQuestionTextBox.Text),
                 _chapterWeights.ToDictionary(c => c.ChapterName, c => c.Weight)
             );
-            SaveExamSettings(examSettings);
 
-            var examQuestions = GenerateExamQuestions(examSettings);
+            try
+            {
+                await _examSettingsService.SaveAsync(_project, examSettings);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"保存考试设置失败：{ex.Message}", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var examQuestions = _examPaperService.Generate(_project, examSettings);
 
             if (examQuestions.Count == 0)
             {
@@ -235,7 +265,7 @@ namespace ReciteHelper.Wpf.Views {
                 return;
             }
 
-            var examWindow = new ExamWindow(examQuestions, _project.ProjectName!);
+            var examWindow = new ExamWindow(examQuestions, _project.ProjectName!, _examAnswerService);
             examWindow.Show();
 
             Close();
@@ -285,131 +315,6 @@ namespace ReciteHelper.Wpf.Views {
             }
 
             return true;
-        }
-
-        private void SaveExamSettings(ExamSettings settings)
-        {
-            try
-            {
-                // You can save the settings to a file
-                string json = System.Text.Json.JsonSerializer.Serialize(settings,
-                    new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-
-                string settingsPath = System.IO.Path.Combine(
-                    System.IO.Path.GetDirectoryName(_project.StoragePath),
-                    "exam_settings.json");
-
-                System.IO.File.WriteAllText(settingsPath, json);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"保存考试设置失败：{ex.Message}", "错误",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private List<Question> GenerateExamQuestions(ExamSettings settings)
-        {
-            var allQuestions = new List<Question>();
-
-            foreach (var chapter in _project.Chapters)
-            {
-                if (chapter.Questions != null)
-                {
-                    foreach (var question in chapter.Questions)
-                    {
-                        allQuestions.Add(new Question
-                        {
-                            Text = question.Text,
-                            CorrectAnswer = question.CorrectAnswer,
-                        });
-                    }
-                }
-            }
-
-            if (allQuestions.Count < settings.QuestionCount)
-            {
-                return new List<Question>();
-            }
-
-            // If all weights are 0, randomly select a question
-            if (_chapterWeights.All(c => c.Weight == 0))
-            {
-                return GetRandomQuestions(allQuestions, settings.QuestionCount);
-            }
-
-            // Otherwise, questions will be selected based on weight
-            return GetWeightedQuestions(settings);
-        }
-
-        private List<Question> GetRandomQuestions(List<Question> allQuestions, int count)
-        {
-            var random = new Random();
-            return allQuestions.OrderBy(x => random.Next()).Take(count).ToList();
-        }
-
-        private List<Question> GetWeightedQuestions(ExamSettings settings)
-        {
-            var selectedQuestions = new List<Question>();
-            var random = new Random();
-
-            // Calculate the total weight
-            double totalWeight = _chapterWeights.Sum(c => c.Weight);
-
-            // Allocate the number of questions by weight
-            foreach (var chapter in _project.Chapters)
-            {
-                var weightSetting = _chapterWeights.FirstOrDefault(c => c.ChapterName == chapter.Name);
-                if (weightSetting == null || weightSetting.Weight == 0 || chapter.Questions == null)
-                    continue;
-
-                // Calculate the number of questions to be drawn for this chapter
-                double proportion = weightSetting.Weight / totalWeight;
-                int chapterQuestionCount = (int)Math.Round(settings.QuestionCount * proportion);
-
-                chapterQuestionCount = Math.Max(1, Math.Min(chapterQuestionCount, chapter.Questions.Count));
-                var chapterQuestions = chapter.Questions.OrderBy(x => random.Next()).Take(chapterQuestionCount);
-
-                foreach (var question in chapterQuestions)
-                {
-                    selectedQuestions.Add(new Question
-                    {
-                        Text = question.Text,
-                        CorrectAnswer = question.CorrectAnswer,
-                    });
-                }
-            }
-
-            // Supplement them from other chapters
-            if (selectedQuestions.Count < settings.QuestionCount)
-            {
-                var remainingCount = settings.QuestionCount - selectedQuestions.Count;
-                var allRemainingQuestions = new List<Question>();
-
-                foreach (var chapter in _project.Chapters)
-                {
-                    if (chapter.Questions != null)
-                    {
-                        // Find the questions that were not selected
-                        var selectedContents = selectedQuestions.Select(q => q.Text).ToList();
-                        var remaining = chapter.Questions.Where(q => !selectedContents.Contains(q.Text)).ToList();
-                        allRemainingQuestions.AddRange(remaining);
-                    }
-                }
-
-                var additionalQuestions = allRemainingQuestions.OrderBy(x => random.Next()).Take(remainingCount);
-                foreach (var question in additionalQuestions)
-                {
-                    selectedQuestions.Add(new Question
-                    {
-                        Text = question.Text,
-                        CorrectAnswer = question.CorrectAnswer,
-                    });
-                }
-            }
-
-            // Randomly shuffle the order of the questions
-            return selectedQuestions.OrderBy(x => random.Next()).ToList();
         }
 
         private T FindVisualChild<T>(DependencyObject parent, string childName = null) where T : DependencyObject

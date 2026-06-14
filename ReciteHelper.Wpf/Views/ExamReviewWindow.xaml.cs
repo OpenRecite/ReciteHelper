@@ -1,6 +1,6 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
+using ReciteHelper.Application.Interfaces.Services;
 using ReciteHelper.Wpf.Models;
-using ReciteHelper.Infrastructure.Utilities;
 using ReciteHelper.Wpf.ViewModels;
 using System.ComponentModel;
 using System.IO;
@@ -13,14 +13,17 @@ namespace ReciteHelper.Wpf.Views;
 /// </summary>
 public partial class ExamReviewWindow : Window, INotifyPropertyChanged
 {
+    private readonly IExamAnswerService _examAnswerService;
     private List<ExamQuestionItem> _examQuestions;
     private int _totalQuestions;
     private int _correctCount;
     private int _wrongCount;
     private double _accuracy;
 
-    public ExamReviewWindow(List<ExamQuestionItem> examQuestions)
+    public ExamReviewWindow(List<ExamQuestionItem> examQuestions, IExamAnswerService examAnswerService)
     {
+        _examAnswerService = examAnswerService;
+
         InitializeComponent();
         _examQuestions = examQuestions ?? new List<ExamQuestionItem>();
 
@@ -32,7 +35,7 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
     private void CalculateStatistics()
     {
         _totalQuestions = _examQuestions.Count;
-        _correctCount = _examQuestions.Count(q => JudgeAnswer.Run(q.Question!, q.UserAnswer));
+        _correctCount = _examQuestions.Count(q => _examAnswerService.IsCorrect(q.Question!, q.UserAnswer));
         _wrongCount = _totalQuestions - _correctCount;
         _accuracy = _totalQuestions > 0 ? (_correctCount * 100.0) / _totalQuestions : 0;
     }
@@ -51,8 +54,8 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
                 UserAnswer = examQuestion.UserAnswer ?? "未作答",
                 CorrectAnswer = examQuestion.Question?.CorrectAnswer ?? "正确答案缺失",
                 Explanation = "无解析",
-                IsCorrect = JudgeAnswer.Run(examQuestion.Question!, examQuestion.UserAnswer),
-                ItemStyle = JudgeAnswer.Run(examQuestion.Question!, examQuestion.UserAnswer) ?
+                IsCorrect = _examAnswerService.IsCorrect(examQuestion.Question!, examQuestion.UserAnswer),
+                ItemStyle = _examAnswerService.IsCorrect(examQuestion.Question!, examQuestion.UserAnswer) ?
                     (Style)FindResource("CorrectAnswerStyle") :
                     (Style)FindResource("WrongAnswerStyle")
             };
@@ -119,7 +122,7 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
         for (int i = 0; i < _examQuestions.Count; i++)
         {
             var question = _examQuestions[i];
-            var isCorrect = JudgeAnswer.Run(question.Question!, question.UserAnswer);
+            var isCorrect = _examAnswerService.IsCorrect(question.Question!, question.UserAnswer);
 
             writer.WriteLine($"第{i + 1}题 {(isCorrect ? "✓" : "✗")}");
             writer.WriteLine($"题目：{question.Question?.Text}");

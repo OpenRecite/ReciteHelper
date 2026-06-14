@@ -1,9 +1,9 @@
-﻿using ReciteHelper.Core.Aggregates;
+﻿using ReciteHelper.Application.Interfaces.Services;
+using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Enums;
 using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Wpf.Models;
-using ReciteHelper.Infrastructure.Utilities;
 using ReciteHelper.Wpf.ViewModels;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -19,6 +19,8 @@ namespace ReciteHelper.Wpf.Views;
 
 public partial class QuizWindow : Window, INotifyPropertyChanged
 {
+    private readonly IQuizService _quizService;
+    private readonly IProjectFileService _projectFileService;
     private ObservableCollection<QuestionItem> _questions;
     private LatestBuffer<bool> _latest;
     private int _currentQuestionIndex = 0;
@@ -27,8 +29,11 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     private Project _project = new();
     private DateTime _startTime = DateTime.Now;
 
-    public QuizWindow(Project project, string chapterName)
+    public QuizWindow(Project project, string chapterName, IQuizService quizService, IProjectFileService projectFileService)
     {
+        _quizService = quizService;
+        _projectFileService = projectFileService;
+
         InitializeComponent();
         DataContext = this;
 
@@ -42,8 +47,11 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     }
 
 
-    public QuizWindow(Project project, List<Question> recitePlan)
+    public QuizWindow(Project project, List<Question> recitePlan, IQuizService quizService, IProjectFileService projectFileService)
     {
+        _quizService = quizService;
+        _projectFileService = projectFileService;
+
         InitializeComponent();
         DataContext = this;
 
@@ -227,62 +235,27 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         var currentQuestion = _questions[_currentQuestionIndex];
         currentQuestion.UserAnswer = AnswerTextBox.Text.Trim();
 
-        // Determine whether the answer is roughly similar to the given answer
-        var isCorrect = JudgeAnswer.Run(currentQuestion.Question!, currentQuestion.UserAnswer);
-        currentQuestion.Status = isCorrect ? AnswerStatus.Correct : AnswerStatus.Wrong;
+        var answerResult = await _quizService.ProcessAnswerAsync(
+            currentQuestion.Question!,
+            currentQuestion.UserAnswer,
+            _startTime);
+
+        currentQuestion.Status = answerResult.IsCorrect ? AnswerStatus.Correct : AnswerStatus.Wrong;
 
         // Show result
         ShowResult(currentQuestion);
         AnswerTextBox.IsEnabled = false;
         UpdateAnswerCardStyles();
 
-        // Record data
-        var similarity = JudgeAnswer.CalculateSimilarity(currentQuestion.UserAnswer, currentQuestion.Question!.CorrectAnswer);
-        var duration = DateTime.Now - _startTime;
-        var rate = currentQuestion.UserAnswer.Length / duration.TotalSeconds;
-        var rStandard = Config.Configure.RStandard;
-        var rRelative = (double)rate / rStandard;
-
-        if (AnswerTextBox.Text.Length <= 12)
-        {
-            var l = AnswerTextBox.Text.Length;
-
-            /*
-             * WARNING:
-             * This is an empirical formula derived from actual measurements and 
-             * fitted data. Do not modify this line unless rigorously proven to 
-             * yield a fit superior to a fourth-order polynomial
-             */
-            var coff = -0.000000464 * Math.Pow(l, 4)
-                + 0.0000746 * Math.Pow(l, 3) -0.0041 * Math.Pow(l, 2)
-                + 0.0895 * l + 0.2497;
-
-            rRelative /= coff;
-            rRelative /= 1.099d;
-        }
-
-        rRelative = rRelative > 1.125d ? 1.125d : rRelative;
-
-        var qValue = Supermemo.PredictQValue(rRelative, similarity);
-        var efValue = Supermemo.CalculateEFValue(
-            currentQuestion.Question!.EFValue, qValue);
-
         var tagCount = _questions[_currentQuestionIndex].Question!.ReviewTag.Count;
-        var reviewTag = new ReviewTag()
-        {
-            Rate=rRelative,
-            Time=DateTime.Now,
-            Similarity=similarity,
-            QValue = qValue
-        };
-        reviewTag.SetId(tagCount + 1);
-        _questions[_currentQuestionIndex].Question!.ReviewTag.Add(reviewTag);
+        answerResult.ReviewTag.SetId(tagCount + 1);
+        _questions[_currentQuestionIndex].Question!.ReviewTag.Add(answerResult.ReviewTag);
 
-        currentQuestion.Question!.EFValue = efValue;
-        QDisplayLabel.Content = $"Q Predict: {qValue}";
+        currentQuestion.Question!.EFValue = answerResult.NewEFValue;
+        QDisplayLabel.Content = $"Q Predict: {answerResult.QValue}";
 
         // Play phonk effect
-        _latest.Add(isCorrect);
+        _latest.Add(answerResult.IsCorrect);
         if (_latest.EqualsTo(false) && Config.Configure.PhonkOptions.EnablePhonk)
             await PlayPhonkEffect();
     }
@@ -369,7 +342,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    private void Window_Closing(object sender, CancelEventArgs e)
+    private async void Window_Closing(object sender, CancelEventArgs e)
     {
         if (_project is null) return;
 
@@ -387,9 +360,6 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
 
         }
 
-        var path = Path.Combine(_project.StoragePath!, _project.ProjectName!, _project.ProjectName!);
-        var json = System.Text.Json.JsonSerializer.Serialize(_project,
-            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText($"{path}.rhproj", json);
+        await _projectFileService.SaveProjectAsync(_project);
     }
 }

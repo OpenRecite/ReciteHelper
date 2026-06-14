@@ -17,13 +17,15 @@ public class ReviewGenerator : IReviewGenerator
         var allQuestions = GetAllQuestions(project);
 
         if (allQuestions.Count <= count)
-            return allQuestions.ToList();
+            return ResetStatus(allQuestions.ToList());
 
-        return allQuestions
+        var result = allQuestions
             .OrderBy(q => q.EFValue)
             .ThenBy(q => _random.Next())
             .Take(count)
             .ToList();
+
+        return ResetStatus(result);
     }
 
     public List<Question> GenerateParameterizationReview(Project project, ReviewOptions options)
@@ -55,5 +57,11 @@ public class ReviewGenerator : IReviewGenerator
         return project.Chapters
             ?.SelectMany(c => c.Questions ?? new List<Question>())
             .ToList() ?? new List<Question>();
+    }
+
+    private static List<Question> ResetStatus(List<Question> questions)
+    {
+        questions.ForEach(question => question.Status = null);
+        return questions;
     }
 }

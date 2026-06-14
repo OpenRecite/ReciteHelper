@@ -1,9 +1,6 @@
 using AquaAvgFramework.StoryLineComponents;
+using ReciteHelper.Application.Interfaces.Services;
 using ReciteHelper.Core.Aggregates;
-using ReciteHelper.Wpf.Models;
-using System.IO;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Windows;
 
 namespace ReciteHelper.Wpf.Views;
@@ -13,27 +10,20 @@ namespace ReciteHelper.Wpf.Views;
 /// </summary>
 public partial class GalWindow : Window
 {
-    private Project _currentProject;
-    public GalWindow(Project project)
-    {
-        InitializeComponent();
+    private readonly Project _currentProject;
+    private readonly IGalGameService _galGameService;
 
+    public GalWindow(Project project, IGalGameService galGameService)
+    {
         _currentProject = project;
+        _galGameService = galGameService;
+
+        InitializeComponent();
     }
 
-    private void Window_Loaded(object sender, RoutedEventArgs e)
+    private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        var gamePath = Path.Combine(_currentProject.StoragePath!, _currentProject.ProjectName!, "game.rhgal");
-
-        var text = File.ReadAllText(gamePath);
-        var options = new JsonSerializerOptions
-        {
-            ReferenceHandler = ReferenceHandler.Preserve,
-            WriteIndented = true
-        };
-
-        var storyLine = JsonSerializer.Deserialize<StoryLine>(text, options);
-
-        GamePanel.StoryLines = [storyLine!];
+        var storyLines = await _galGameService.LoadStoryLinesAsync(_currentProject);
+        GamePanel.StoryLines = storyLines.Cast<StoryLine>().ToList();
     }
 }

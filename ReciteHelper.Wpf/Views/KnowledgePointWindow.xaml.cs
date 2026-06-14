@@ -1,4 +1,5 @@
-﻿using ReciteHelper.Core.Aggregates;
+﻿using ReciteHelper.Application.Interfaces.Services;
+using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Wpf.Models;
@@ -13,13 +14,16 @@ namespace ReciteHelper.Wpf.Views;
 
 public partial class KnowledgePointWindow : Window, INotifyPropertyChanged
 {
+    private readonly IProjectFileService _projectFileService;
     private Project _currentProject;
     private KnowledgePoint _currentKnowledgePoint;
     private string _currentMarkdownContent;
     private Renderer renderer;
 
-    public KnowledgePointWindow(Project project)
+    public KnowledgePointWindow(Project project, IProjectFileService projectFileService)
     {
+        _projectFileService = projectFileService;
+
         InitializeComponent();
         _currentProject = project;
 
@@ -176,18 +180,11 @@ public partial class KnowledgePointWindow : Window, INotifyPropertyChanged
         ChaptersItemsControl.Items.Refresh();
     }
 
-    private void SaveProjectChanges()
+    private async void SaveProjectChanges()
     {
         try
         {
-            // Save project data to file
-            string json = System.Text.Json.JsonSerializer.Serialize(_currentProject,
-                new System.Text.Json.JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                });
-
-            File.WriteAllText(Path.Combine(_currentProject.StoragePath!,$"{_currentProject.ProjectName}.rhproj"), json);
+            await _projectFileService.SaveProjectAsync(_currentProject);
         }
         catch (Exception ex)
         {

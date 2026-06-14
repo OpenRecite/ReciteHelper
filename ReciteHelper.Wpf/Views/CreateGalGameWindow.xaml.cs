@@ -1,23 +1,25 @@
-﻿using AquaAvgFramework.StoryLineComponents;
 using Microsoft.Win32;
-using ReciteHelper.Core.Aggregates;
-using ReciteHelper.Core.ValueObjects;
+using ReciteHelper.Application.Interfaces.Services;
 using ReciteHelper.Wpf.Models;
-using ReciteHelper.Infrastructure.Utilities;
-using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Text.Json;
 using System.Windows;
 
 namespace ReciteHelper.Wpf.Views;
 
 public partial class CreateGalGameWindow : Window, INotifyPropertyChanged
 {
-    public CreateGalGameWindow()
+    private readonly IProjectFileService _projectFileService;
+    private readonly IGalGameCreationService _galGameCreationService;
+
+    public CreateGalGameWindow(
+        IProjectFileService projectFileService,
+        IGalGameCreationService galGameCreationService)
     {
+        _projectFileService = projectFileService;
+        _galGameCreationService = galGameCreationService;
+
         InitializeComponent();
         DataContext = this;
     }
@@ -69,10 +71,17 @@ public partial class CreateGalGameWindow : Window, INotifyPropertyChanged
             return;
         }
 
-        if (!File.Exists(SelectedFilePath))
+        if (!_projectFileService.ProjectExists(SelectedFilePath))
         {
             MessageBox.Show("选择的文件不存在，请重新选择", "文件不存在",
                 MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        if (Config.Configure?.DeepSeekKey is null)
+        {
+            MessageBox.Show("您还未配置Deepseek...", "提示",
+                MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -83,81 +92,21 @@ public partial class CreateGalGameWindow : Window, INotifyPropertyChanged
             MessageBoxButton.YesNo,
             MessageBoxImage.Question);
 
-        if (result == MessageBoxResult.Yes)
+        if (result != MessageBoxResult.Yes)
+            return;
+
+        try
         {
-            var path = SelectedFilePath;
-            var text = File.ReadAllText(path);
-            var project = JsonSerializer.Deserialize<Project>(text)!;
-
-            var chapterQuestions = new Dictionary<string, StringBuilder>();
-            var chapterNames = new StringBuilder();
-
-            foreach (var chapter in project.Chapters!)
-            {
-                var singleChapter = new StringBuilder();
-
-                foreach (var question in chapter.Questions!)
-                {
-                    singleChapter.AppendLine($"问题：{question.Text} 答案：{question.CorrectAnswer}");
-                }
-
-                chapterNames.AppendLine(chapter.Name);
-                chapterQuestions.Add(chapter.Name!, singleChapter);
-            }
-
-            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            var clusterPrompt = File.ReadAllText(Path.Combine(baseDir, "Images", "Prompts", "ReClustering.txt"));
-            var agent = CreateProjectWindow.BuildAgent("You are a writer who excels at creating moving and touching screenplays.");
-
-            var clusterRespose = await agent.Run($"{clusterPrompt}\n{chapterNames}");
-            var clusterJson = clusterRespose.Messages.Last().Content!.Replace("`", "").Replace("json", "").Trim();
-            var clusterResult = JsonSerializer.Deserialize<List<ChapterCluster>>(clusterJson);
-
-            chapterNames.Clear();
-            clusterResult!.ForEach(x => chapterNames.Append($"{x.UnifiedName}/"));
-
-            var prompt = File.ReadAllText(Path.Combine(baseDir, "Images", "Prompts", "GenerateOutline.txt"));
-            var response = await agent.Run($"{prompt}\n{chapterNames}");
-            var jsonString = response.Messages.Last().Content!.Replace("`", "").Replace("json", "").Trim();
-            var chapterList = JsonSerializer.Deserialize<List<GameChapter>>(jsonString)!;
-
-            var galPrompt = File.ReadAllText(Path.Combine(baseDir, "Images", "Prompts", "GenerateGal.txt"));
-            var combined = chapterList.Zip(clusterResult!, (first, second) => (first, second));
-
-            var storyLines = new ConcurrentBag<StoryLine>();
-
-            // This code is highly likely to run, but highly unlikely to run
-            await Parallel.ForEachAsync(combined, async (it, cts) =>
-            {
-                var chapter = it.first;
-                var cluster = it.second;
-                var builder = new StringBuilder();
-
-                foreach (var item in cluster.Chapters!)
-                    builder.AppendLine(chapterQuestions[item].ToString());
-
-                var currentPrompt = galPrompt;
-                currentPrompt += $"{chapter.GameChapterOutline}\n" +
-                                 "This is the content the user needs to review (but don't explicitly label the learning points in the story; let the user feel like they are learning naturally)." +
-                                 $"{builder}";
-
-                var galResponse = await agent.Run(currentPrompt);
-                var galCode = galResponse.Messages.Last().Content!.Replace("`", "").Replace("csharp", "").Trim();
-
-                
-                var mainStoryLine = await Parser.CompileStoryAsync(galCode);
-                storyLines.Add(mainStoryLine);
-            });
-
-            var localPath = project.StoragePath;
-            var savePath = Path.Combine(localPath!, "game.rhgal");
-            var saveString = JsonSerializer.Serialize(storyLines);
-
-            File.WriteAllText(savePath, saveString);
+            await _galGameCreationService.CreateAsync(SelectedFilePath, Config.Configure.DeepSeekKey);
             MessageBox.Show("游戏文件创建成功，您可以在章节界面的菜单中加载了", "创建成功", MessageBoxButton.OK, MessageBoxImage.Information);
 
             DialogResult = true;
             Close();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"游戏文件创建失败：{ex.Message}", "创建失败",
+                MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

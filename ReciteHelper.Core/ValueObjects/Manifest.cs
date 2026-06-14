@@ -12,7 +12,7 @@ public class Manifest : ValueObject
     [JsonPropertyName("version")]
     public string? Version { get; set; }
 
-    [JsonPropertyName("version")]
+    [JsonPropertyName("projectfile")]
     public string? ProjectFile { get; set; }
 
     private Manifest(string? bankFile, string? version, string? projectFile)

@@ -1,15 +1,10 @@
-﻿using AquaAvgFramework.StoryLineComponents;
+using ReciteHelper.Application.Interfaces.Services;
 using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Entities;
-using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Wpf.Models;
-using ReciteHelper.Infrastructure.Utilities;
 using ReciteHelper.Wpf.ViewModels;
 using System.ComponentModel;
 using System.IO;
-using System.IO.Compression;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
@@ -18,12 +13,35 @@ namespace ReciteHelper.Wpf.Views;
 
 public partial class SelectChapterWindow : Window, INotifyPropertyChanged
 {
+    private readonly IProjectFileService _projectFileService;
+    private readonly IQuizService _quizService;
+    private readonly IReviewGenerator _reviewGenerator;
+    private readonly IExamAnswerService _examAnswerService;
+    private readonly IExamPaperService _examPaperService;
+    private readonly IExamSettingsService _examSettingsService;
+    private readonly IGalGameService _galGameService;
     private Project? _currentProject;
     private DispatcherTimer _clockTimer;
     private List<ChapterViewModel> _chapters;
 
-    public SelectChapterWindow(Project project)
+    public SelectChapterWindow(
+        Project project,
+        IProjectFileService projectFileService,
+        IQuizService quizService,
+        IReviewGenerator reviewGenerator,
+        IExamAnswerService examAnswerService,
+        IExamPaperService examPaperService,
+        IExamSettingsService examSettingsService,
+        IGalGameService galGameService)
     {
+        _projectFileService = projectFileService;
+        _quizService = quizService;
+        _reviewGenerator = reviewGenerator;
+        _examAnswerService = examAnswerService;
+        _examPaperService = examPaperService;
+        _examSettingsService = examSettingsService;
+        _galGameService = galGameService;
+
         InitializeComponent();
         _currentProject = project;
 
@@ -114,7 +132,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
             return;
         }
 
-        var quizWindow = new QuizWindow(_currentProject, chapter.Name!)
+        var quizWindow = new QuizWindow(_currentProject, chapter.Name!, _quizService, _projectFileService)
         {
             Title = $"{_currentProject.ProjectName} - {chapter.Name}",
             Owner = this
@@ -127,7 +145,11 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
     private void SimulateButton_Click(object sender, RoutedEventArgs e)
     {
         var random = Random.Shared;
-        var examWindow = new ExamSettingWindow(_currentProject);
+        var examWindow = new ExamSettingWindow(
+            _currentProject,
+            _examAnswerService,
+            _examPaperService,
+            _examSettingsService);
 
         examWindow.Show();
         Close();
@@ -147,7 +169,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
     {
         if (_currentProject != null)
         {
-            var knowledgeWindow = new KnowledgePointWindow(_currentProject);
+            var knowledgeWindow = new KnowledgePointWindow(_currentProject, _projectFileService);
             knowledgeWindow.ShowDialog();
         }
     }
@@ -163,11 +185,9 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
         FunctionMenu.IsOpen = true;
     }
 
-    private void GameMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void GameMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        var gamePath = Path.Combine(_currentProject.StoragePath!, _currentProject.ProjectName!, "game.rhgal");
-
-        if (!File.Exists(gamePath))
+        if (!_galGameService.Exists(_currentProject!))
         {
             MessageBox.Show("游戏文件尚未创建，请先创建", "打开失败", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
@@ -175,14 +195,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
 
         try
         {
-            var text = File.ReadAllText(gamePath);
-            var options = new JsonSerializerOptions
-            {
-                ReferenceHandler = ReferenceHandler.Preserve,
-                WriteIndented = true
-            };
-
-            var test = JsonSerializer.Deserialize<StoryLine>(text, options);
+            _ = await _galGameService.LoadStoryLinesAsync(_currentProject!);
         }
         catch (Exception)
         {
@@ -190,71 +203,38 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
             return;
         }
 
-        var gameWindow = new GalWindow(_currentProject);
+        var gameWindow = new GalWindow(_currentProject!, _galGameService);
         gameWindow.Show();
     }
 
     private async void ExportMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (_currentProject.StoragePath is null || _currentProject.ProjectName is null)
+        if (_currentProject is null)
             return;
 
-        // Create output directory
-        var path = Path.Combine(_currentProject.StoragePath, _currentProject.ProjectName, "output");
-        Directory.Clear(path);
-        Directory.CreateDirectory(path);
-
-        // Create manifest file
-        var manifest = Manifest.Create
-        (
-            $"{_currentProject.ProjectName}_exp.rhproj",
-             _currentProject.QuestionBankPath,
-             Config.Configure?.Version
-        );
-        var manifestString = JsonSerializer.Serialize<Manifest>(manifest,
-            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-        var manifestPath = Path.Combine(_currentProject.StoragePath, _currentProject.ProjectName, "output", "manifest.json");
-        File.WriteAllText(manifestPath, manifestString);
-
-        // Create a new file for modification
-        var folderPath = Path.Combine(_currentProject.StoragePath, _currentProject.ProjectName);
-        var outputFoldePath = Path.Combine(folderPath, "output");
-        var fnPath = Path.Combine(folderPath, $"{_currentProject.ProjectName}.rhproj");
-        var destPath = Path.Combine(outputFoldePath, $"{_currentProject.ProjectName}.rhproj").Replace(".rhproj", "_exp.rhproj");
-        File.Copy(fnPath, destPath, true);
-
-        // Read record
-        var projectString = File.ReadAllText(destPath);
-        var record = JsonSerializer.Deserialize<Project>(projectString);
-
-        if (record is null || record.Chapters is null) return;
-        foreach (var chapter in record.Chapters)
+        try
         {
-            if (chapter.Questions is null) continue;
-            chapter.Questions.ForEach(q => q.Status = null);
+            var archivePath = await _projectFileService.ExportProjectArchiveAsync(
+                _currentProject,
+                Config.Configure?.Version);
+            var folderPath = Path.GetDirectoryName(archivePath);
+
+            if (folderPath is not null)
+                System.Diagnostics.Process.Start("explorer.exe", folderPath);
+
+            MessageBox.Show("已导出至rh_output.zip。");
         }
-
-        // Reset record
-        var clearText = JsonSerializer.Serialize(record,
-            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(destPath, clearText);
-
-        // Export compressed file
-        var zipPath = @"rh_output.zip";
-        var absoluteFile = Path.Combine(folderPath, zipPath);
-        if (File.Exists(absoluteFile))
-            File.Delete(absoluteFile);
-        await ZipFile.CreateFromDirectoryAsync(outputFoldePath, absoluteFile);
-
-        System.Diagnostics.Process.Start("explorer.exe", folderPath);
-        MessageBox.Show("已导出至rh_output.zip。");
+        catch (Exception ex)
+        {
+            MessageBox.Show($"导出失败：{ex.Message}", "导出失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void ReviewMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        var questionList = Supermemo.GenerateReview(_currentProject, 30);
+        var questionList = _reviewGenerator.GenerateReview(_currentProject, 30);
 
-        var quizWindow = new QuizWindow(_currentProject, questionList)
+        var quizWindow = new QuizWindow(_currentProject, questionList, _quizService, _projectFileService)
         { Owner = System.Windows.Application.Current.MainWindow };
         quizWindow.Show();
         Close();

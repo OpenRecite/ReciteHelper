@@ -1,8 +1,8 @@
-﻿using FuzzyString;
+using FuzzyString;
+using ReciteHelper.Application.Interfaces.Services;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Enums;
 using ReciteHelper.Wpf.Models;
-using ReciteHelper.Infrastructure.Utilities;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -15,6 +15,7 @@ namespace ReciteHelper.Wpf.Views;
 
 public partial class ExamWindow : Window, INotifyPropertyChanged
 {
+    private readonly IExamAnswerService _examAnswerService;
     private ObservableCollection<ExamQuestionItem> _questions;
     private int _currentQuestionIndex = 0;
     private int _totalQuestions = 0;
@@ -24,8 +25,10 @@ public partial class ExamWindow : Window, INotifyPropertyChanged
     private TimeSpan _examDuration = TimeSpan.FromMinutes(60);
     private TimeSpan _timeRemaining;
 
-    public ExamWindow(List<Question> questions, string examName)
+    public ExamWindow(List<Question> questions, string examName, IExamAnswerService examAnswerService)
     {
+        _examAnswerService = examAnswerService;
+
         InitializeComponent();
         DataContext = this;
 
@@ -168,7 +171,7 @@ public partial class ExamWindow : Window, INotifyPropertyChanged
         {
             if (string.IsNullOrEmpty(question.UserAnswer)) continue;
 
-            var isCorrect = JudgeAnswer.Run(question.UserAnswer,question.Question!.CorrectAnswer!);
+            var isCorrect = _examAnswerService.IsCorrect(question.Question!, question.UserAnswer);
             if (isCorrect)
                 _correctCount++;
         }
@@ -305,7 +308,7 @@ public partial class ExamWindow : Window, INotifyPropertyChanged
     private void ReviewAnswersButton_Click(object sender, RoutedEventArgs e)
     { 
         // Create a window to view the answers
-        var reviewWindow = new ExamReviewWindow(_questions.ToList());
+        var reviewWindow = new ExamReviewWindow(_questions.ToList(), _examAnswerService);
         reviewWindow.Owner = this;
         reviewWindow.ShowDialog();
     }

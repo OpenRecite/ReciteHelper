@@ -34,6 +34,20 @@ public partial class App : System.Windows.Application
 
         services.AddSingleton<IAnswerJudge, SbertModelJudge>();
         services.AddSingleton<IQuizService, QuizService>();
+        services.AddSingleton<IReviewGenerator, ReviewGenerator>();
+        services.AddSingleton<IExamPaperService, ExamPaperService>();
+        services.AddSingleton<IExamSettingsService, ExamSettingsService>();
+        services.AddSingleton<IExamAnswerService, ExamAnswerService>();
+        services.AddSingleton<IProjectFileService, ProjectFileService>();
+        services.AddSingleton<IProjectCreationService, ProjectCreationService>();
+        services.AddSingleton<IQuestionBankTextService, QuestionBankTextService>();
+        services.AddSingleton<IAiChatService, AiChatService>();
+        services.AddSingleton<IStartupCompatibilityService, StartupCompatibilityService>();
+        services.AddSingleton<IRecentProjectService, RecentProjectService>();
+        services.AddSingleton<IFileMergeService, FileMergeService>();
+        services.AddSingleton<IGalGameService, GalGameService>();
+        services.AddSingleton<IGalGameCreationService, GalGameCreationService>();
+        services.AddSingleton<IPromptProvider, PromptProvider>();
         services.AddSingleton<IPhonkService, PhonkService>();
         services.AddSingleton<ISuperMemoService, SuperMemoService>(); 
 
