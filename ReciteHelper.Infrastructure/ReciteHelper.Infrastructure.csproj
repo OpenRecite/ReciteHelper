@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows7.0</TargetFramework>
@@ -19,6 +19,7 @@
     <PackageReference Include="Microsoft.SemanticKernel.Abstractions" Version="1.73.0" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.Onnx" Version="1.73.0-alpha" />
     <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.73.0-alpha" />
+    <PackageReference Include="OpenAI" Version="2.11.0" />
     <PackageReference Include="System.Management" Version="10.0.1" />
   </ItemGroup>
 
@@ -28,7 +29,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\external\AquaAvgFramework\AquaAvgFramework.csproj" />
-    <ProjectReference Include="..\ReciteHelper.Application\ReciteHelper.Application.csproj" />
     <ProjectReference Include="..\ReciteHelper.Core\ReciteHelper.Core.csproj" />
   </ItemGroup>
 

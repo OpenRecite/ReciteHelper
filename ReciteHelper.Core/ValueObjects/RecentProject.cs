@@ -1,4 +1,4 @@
-﻿using ReciteHelper.Core.Exceptions;
+using ReciteHelper.Core.Exceptions;
 using ReciteHelper.SharedKernel;
 using System.Text.Json.Serialization;
 

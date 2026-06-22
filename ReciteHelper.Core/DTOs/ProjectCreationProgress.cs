@@ -1,4 +1,4 @@
-namespace ReciteHelper.Application.DTOs;
+namespace ReciteHelper.Core.DTOs;
 
 public sealed record ProjectCreationProgress(
     int ScanCurrent,

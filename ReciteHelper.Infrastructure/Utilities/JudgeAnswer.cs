@@ -1,4 +1,4 @@
-﻿using FuzzyString;
+using FuzzyString;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Infrastructure.Algorithms;
 

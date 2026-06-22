@@ -1,5 +1,5 @@
 using FuzzyString;
-using ReciteHelper.Application.Interfaces.Services;
+using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Enums;
 using ReciteHelper.Wpf.Models;

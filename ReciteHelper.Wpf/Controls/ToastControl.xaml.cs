@@ -1,4 +1,4 @@
-﻿using ReciteHelper.Wpf.Services;
+using ReciteHelper.Wpf.Services;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;

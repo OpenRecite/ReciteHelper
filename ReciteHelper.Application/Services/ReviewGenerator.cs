@@ -1,5 +1,5 @@
-﻿using ReciteHelper.Application.DTOs;
-using ReciteHelper.Application.Interfaces.Services;
+using ReciteHelper.Core.DTOs;
+using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Entities;
 

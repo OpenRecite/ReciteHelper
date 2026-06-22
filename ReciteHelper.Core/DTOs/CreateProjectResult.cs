@@ -1,5 +1,5 @@
 using ReciteHelper.Core.Aggregates;
 
-namespace ReciteHelper.Application.DTOs;
+namespace ReciteHelper.Core.DTOs;
 
 public sealed record CreateProjectResult(Project Project, string ProjectPath);

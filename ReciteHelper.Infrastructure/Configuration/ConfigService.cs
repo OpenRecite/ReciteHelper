@@ -1,4 +1,4 @@
-﻿using ReciteHelper.Application.Interfaces.Configuration;
+using ReciteHelper.Core.Interfaces.Configuration;
 using ReciteHelper.Core.Configuration;
 using ReciteHelper.Core.Exceptions;
 using System.Text.RegularExpressions;
@@ -32,6 +32,7 @@ public class ConfigService : IConfigService
                 return new ConfigOptions();
 
             config.DeepSeekKey = ResolveConfigText(config.DeepSeekKey);
+            config.QwenKey = ResolveConfigText(config.QwenKey);
             return config;
         }
         catch (Exception ex)

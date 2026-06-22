@@ -1,4 +1,4 @@
-﻿using ReciteHelper.Core.EventArgs;
+using ReciteHelper.Core.EventArgs;
 
 namespace ReciteHelper.Core.Interfaces.Services;
 

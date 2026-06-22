@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.AI;
+using Microsoft.Extensions.AI;
 using Microsoft.SemanticKernel;
 using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Infrastructure.Algorithms;

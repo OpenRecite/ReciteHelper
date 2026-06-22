@@ -1,4 +1,4 @@
-﻿using ReciteHelper.SharedKernel;
+using ReciteHelper.SharedKernel;
 
 namespace ReciteHelper.Core.ValueObjects;
 

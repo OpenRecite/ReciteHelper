@@ -1,4 +1,4 @@
-﻿namespace ReciteHelper.Wpf.Services;
+namespace ReciteHelper.Wpf.Services;
 
 public interface IToastService
 {

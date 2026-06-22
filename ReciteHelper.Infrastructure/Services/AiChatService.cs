@@ -1,7 +1,7 @@
 using LlmTornado;
 using LlmTornado.Agents;
 using LlmTornado.Chat.Models;
-using ReciteHelper.Application.Interfaces.Services;
+using ReciteHelper.Core.Interfaces.Services;
 
 namespace ReciteHelper.Infrastructure.Services;
 

@@ -1,4 +1,4 @@
-﻿using Docnet.Core;
+using Docnet.Core;
 using Docnet.Core.Models;
 using ReciteHelper.Core.ValueObjects;
 using Spire.Doc;

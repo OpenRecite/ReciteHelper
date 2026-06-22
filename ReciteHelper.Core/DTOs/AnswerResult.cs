@@ -1,6 +1,6 @@
-﻿using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.Entities;
 
-namespace ReciteHelper.Application.DTOs;
+namespace ReciteHelper.Core.DTOs;
 
 public class AnswerResult
 {

@@ -1,5 +1,5 @@
 using Microsoft.Win32;
-using ReciteHelper.Application.Interfaces.Services;
+using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Wpf.Models;
 using System.ComponentModel;
 using System.IO;

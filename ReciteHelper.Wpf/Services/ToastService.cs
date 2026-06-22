@@ -1,4 +1,4 @@
-﻿using ReciteHelper.Wpf.Controls;
+using ReciteHelper.Wpf.Controls;
 using System.Windows.Threading;
 
 namespace ReciteHelper.Wpf.Services;

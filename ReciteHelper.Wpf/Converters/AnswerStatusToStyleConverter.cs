@@ -1,4 +1,4 @@
-﻿using ReciteHelper.Core.Enums;
+using ReciteHelper.Core.Enums;
 using ReciteHelper.Wpf.ViewModels;
 using System.Globalization;
 using System.Windows.Data;

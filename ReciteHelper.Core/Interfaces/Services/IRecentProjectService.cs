@@ -1,6 +1,6 @@
 using ReciteHelper.Core.ValueObjects;
 
-namespace ReciteHelper.Application.Interfaces.Services;
+namespace ReciteHelper.Core.Interfaces.Services;
 
 public interface IRecentProjectService
 {

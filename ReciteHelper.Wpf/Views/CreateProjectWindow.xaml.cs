@@ -1,6 +1,6 @@
 using Microsoft.Win32;
-using ReciteHelper.Application.DTOs;
-using ReciteHelper.Application.Interfaces.Services;
+using ReciteHelper.Core.DTOs;
+using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Wpf.Models;
 using System.IO;
 using System.Windows;

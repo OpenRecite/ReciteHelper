@@ -1,4 +1,4 @@
-﻿using AquaAvgFramework.StoryLineComponents;
+using AquaAvgFramework.StoryLineComponents;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 using ReciteHelper.SharedKernel.Result;

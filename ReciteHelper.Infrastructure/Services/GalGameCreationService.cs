@@ -1,5 +1,5 @@
-using ReciteHelper.Application.DTOs;
-using ReciteHelper.Application.Interfaces.Services;
+using ReciteHelper.Core.DTOs;
+using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Core.ValueObjects;
 using System.Collections.Concurrent;
 using System.Text;

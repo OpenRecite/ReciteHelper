@@ -1,4 +1,4 @@
-using ReciteHelper.Application.Interfaces.Services;
+using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Infrastructure.Utilities;
 
 namespace ReciteHelper.Infrastructure.Services;

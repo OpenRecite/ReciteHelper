@@ -1,4 +1,4 @@
-﻿namespace ReciteHelper.Core.Enums;
+namespace ReciteHelper.Core.Enums;
 
 public enum ExamAnswerStatus
 {

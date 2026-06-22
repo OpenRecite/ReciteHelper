@@ -1,7 +1,7 @@
-﻿using ReciteHelper.Application.DTOs;
+using ReciteHelper.Core.DTOs;
 using ReciteHelper.Core.Entities;
 
-namespace ReciteHelper.Application.Interfaces.Services;
+namespace ReciteHelper.Core.Interfaces.Services;
 
 public interface IQuizService
 {

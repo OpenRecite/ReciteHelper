@@ -1,5 +1,5 @@
-﻿using Microsoft.Win32;
-using ReciteHelper.Application.Interfaces.Services;
+using Microsoft.Win32;
+using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Core.Enums;
 using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Wpf.Models;

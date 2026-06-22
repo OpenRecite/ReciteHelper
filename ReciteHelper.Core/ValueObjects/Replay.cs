@@ -1,4 +1,4 @@
-﻿using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Enums;
 using ReciteHelper.SharedKernel;
 using System.Collections.Concurrent;

@@ -1,5 +1,5 @@
 using AquaAvgFramework.StoryLineComponents;
-using ReciteHelper.Application.Interfaces.Services;
+using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Core.Aggregates;
 using System.Windows;
 

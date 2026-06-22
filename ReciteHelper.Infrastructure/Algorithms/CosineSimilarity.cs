@@ -1,4 +1,4 @@
-﻿using JiebaNet.Segmenter;
+using JiebaNet.Segmenter;
 
 namespace ReciteHelper.Infrastructure.Algorithms;
 

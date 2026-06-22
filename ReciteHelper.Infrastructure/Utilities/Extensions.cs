@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 
 namespace ReciteHelper.Infrastructure.Utilities;
 

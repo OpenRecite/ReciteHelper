@@ -1,6 +1,6 @@
-using ReciteHelper.Application.DTOs;
+using ReciteHelper.Core.DTOs;
 
-namespace ReciteHelper.Application.Interfaces.Services;
+namespace ReciteHelper.Core.Interfaces.Services;
 
 public interface IProjectCreationService
 {

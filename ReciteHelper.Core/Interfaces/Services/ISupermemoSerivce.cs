@@ -1,4 +1,4 @@
-﻿namespace ReciteHelper.Core.Interfaces.Services;
+namespace ReciteHelper.Core.Interfaces.Services;
 
 public interface ISuperMemoService
 {

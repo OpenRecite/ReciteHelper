@@ -1,6 +1,6 @@
 using ReciteHelper.Core.Enums;
 
-namespace ReciteHelper.Application.DTOs;
+namespace ReciteHelper.Core.DTOs;
 
 public sealed record CreateProjectRequest(
     string ProjectName,

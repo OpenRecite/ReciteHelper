@@ -1,4 +1,4 @@
-﻿namespace ReciteHelper.Core.Exceptions;
+namespace ReciteHelper.Core.Exceptions;
 
 public abstract class DomainException : Exception
 {

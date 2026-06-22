@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Enums;
 using System.Windows;

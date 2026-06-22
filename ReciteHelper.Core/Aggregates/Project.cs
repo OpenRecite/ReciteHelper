@@ -1,4 +1,4 @@
-﻿using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.Entities;
 using ReciteHelper.SharedKernel;
 using System.Text.Json.Serialization;
 

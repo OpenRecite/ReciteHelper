@@ -1,9 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using ReciteHelper.Application.Interfaces.Configuration;
-using ReciteHelper.Application.Interfaces.Services;
-using ReciteHelper.Application.Services;
+using ReciteHelper.Core.Interfaces.Configuration;
 using ReciteHelper.Core.Interfaces.Services;
+using ReciteHelper.Application.Services;
 using ReciteHelper.Infrastructure.Configuration;
 using ReciteHelper.Infrastructure.Services;
 using System.Windows;

@@ -1,4 +1,4 @@
-namespace ReciteHelper.Application.Interfaces.Services;
+namespace ReciteHelper.Core.Interfaces.Services;
 
 public interface IGalGameCreationService
 {

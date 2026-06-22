@@ -1,4 +1,4 @@
-﻿using ReciteHelper.Core.Enums;
+using ReciteHelper.Core.Enums;
 using ReciteHelper.SharedKernel;
 using System.Text.Json.Serialization;
 
