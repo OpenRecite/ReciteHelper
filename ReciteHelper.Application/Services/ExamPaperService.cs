@@ -85,6 +85,15 @@ public sealed class ExamPaperService : IExamPaperService
         return new Question
         {
             Text = question.Text,
+            Type = question.Type,
+            Options = question.Options
+                .Select(option => new ReciteHelper.Core.ValueObjects.QuestionOption
+                {
+                    Id = option.Id,
+                    Text = option.Text
+                })
+                .ToList(),
+            CorrectOptionIds = question.CorrectOptionIds.ToList(),
             CorrectAnswer = question.CorrectAnswer,
         };
     }

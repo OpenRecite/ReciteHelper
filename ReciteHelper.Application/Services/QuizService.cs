@@ -23,8 +23,11 @@ public class QuizService : IQuizService
         string userAnswer,
         DateTime startTime)
     {
-        var isCorrect = await _judgeService.JudgeAsync(userAnswer, question.CorrectAnswer!);
-        var similarity = await _judgeService.CalculateSimilarityAsync(userAnswer, question.CorrectAnswer!);
+        var correctAnswer = question.GetCorrectAnswerText();
+        var isCorrect = question.IsSingleChoice
+            ? question.IsCorrectChoiceAnswer(userAnswer)
+            : await _judgeService.JudgeAsync(userAnswer, correctAnswer);
+        var similarity = await _judgeService.CalculateSimilarityAsync(userAnswer, correctAnswer);
 
         var config = await _configService.LoadAsync();
         var duration = DateTime.Now - startTime;

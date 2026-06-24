@@ -1,72 +1,113 @@
-﻿Please generate some questions based on the text content.
-For fill-in-the-blank questions: extract the knowledge points
-from each sentence and replace them with ________.
+Please generate review questions based on the text content.
 
-If you believe there's no need for rote memorization in some question,
-provide four options, labeled A, B, C, and D, for the fill-in-the-blank
-questions, and set the correct answer as the corresponding option.
-Note: This option is only applicable to some questions.
-Don't let all the questions be single-choice questions,
-nor should there be no single-choice questions at all.
+Generate both short-answer questions and single-choice questions.
 
-For this type of question, the stem you should generate is:
-Here is a question _____ example.
-A. aaa
-B. bbb
-C. ccc
-D. ddd
+Short-answer questions:
+- Use type = "ShortAnswer".
+- Extract one key knowledge point per question.
+- Replace the key knowledge point with ________ when the original sentence is suitable for memorization.
+- For definition questions, format the stem as: 名词解释: 名词.
+- Fill correct_answer with the expected answer text.
+- Keep options and correct_option_ids as empty arrays.
 
-If a sentence contains multiple knowledge points, please
-generate multiple questions, rather than filling in multiple
-blanks in one question. For problem-solving questions:
-simply write the question stem. If the document explicitly
-indicates the presence of definition questions, these are
-also problem-solving questions, and the question
-stem should be uniformly formatted as: 名词解释: 名词.
+Single-choice questions:
+- Use type = "SingleChoice".
+- Generate exactly four options with ids A, B, C, and D.
+- Put only the stem in text. Do not embed A/B/C/D options inside text.
+- Fill options as structured objects.
+- Fill correct_option_ids with exactly one id, such as ["B"].
+- Fill correct_answer with the same correct id, such as "B".
+- Do not make all questions single-choice, and do not omit single-choice questions entirely.
 
-You should divide the problem into several chapters.
+If a sentence contains multiple knowledge points, generate multiple questions instead of multiple blanks in one question.
+Divide the content into several chapters.
 
-The returned JSON format is as follows:
+Return only valid JSON for List<Chapter>. Do not include Markdown fences.
+
+The returned JSON shape is:
 
 public class Chapter
-[JsonPropertyName("name")]
-[NOTNULL] public string Name get; set;
-[JsonPropertyName("number")]
-public int Number get; set;
-[JsonPropertyName("bank")]
-public List? Questions get; set;
-[JsonPropertyName("know")]
-public List? KnowledgePoints get; set;
+{
+    [JsonPropertyName("name")]
+    [NOTNULL] public string Name { get; set; }
+    [JsonPropertyName("number")]
+    public int Number { get; set; }
+    [JsonPropertyName("bank")]
+    public List<Question>? Questions { get; set; }
+    [JsonPropertyName("know")]
+    public List<KnowledgePoint>? KnowledgePoints { get; set; }
+}
 
 public class Question
-// The status of the answers is indicated by a value of null (no answer),
-// true (correct answer), and false (incorrect answer)
-[JsonPropertyName("status")]
-public bool? Status get; set;
-[JsonPropertyName("text")]
-public string? Text get; set;
-[JsonPropertyName("user_answer")]
-public string? UserAnswer get; set; = null;
-[JsonPropertyName("correct_answer")]
-public string? CorrectAnswer get; set;
-// Please keep this item as an empty list
-[JsonPropertyName("review_tag")]
-public List<ReviewTag>? ReviewTag { get; set; } = [];
+{
+    // null means unanswered, true means correct, false means incorrect.
+    [JsonPropertyName("status")]
+    public bool? Status { get; set; }
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
+    [JsonPropertyName("type")]
+    public string Type { get; set; } // "ShortAnswer" or "SingleChoice"
+    [JsonPropertyName("options")]
+    public List<QuestionOption> Options { get; set; }
+    [JsonPropertyName("correct_option_ids")]
+    public List<string> CorrectOptionIds { get; set; }
+    [JsonPropertyName("correct_answer")]
+    public string? CorrectAnswer { get; set; }
+    // Please keep this item as an empty list.
+    [JsonPropertyName("review_tag")]
+    public List<ReviewTag>? ReviewTag { get; set; }
+}
 
-You also need to extract the key knowledge points, mark the titles
-and specific content, ContentMarkdown is a summary of specific
-knowledge points about this topic, presented in Markdown format,
-and can be more detailed.
+public class QuestionOption
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } // "A", "B", "C", or "D"
+    [JsonPropertyName("text")]
+    public string Text { get; set; }
+}
 
-[JsonPropertyName("name")]
-public string? Name get; set;
-[JsonPropertyName("content")]
-public string? ContentMarkdown get; set;
-///
-/// Mark the knowledge point mastery status as false.
-///
-public bool isMastered get; set; = false;
+public class KnowledgePoint
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+    [JsonPropertyName("content")]
+    public string? ContentMarkdown { get; set; }
+    // Mark the knowledge point mastery status as false.
+    public bool isMastered { get; set; }
+}
 
-Fill in Text and CorrectAnswer, Return a JSON form of List<Chapter>.
+Example:
+[
+  {
+    "name": "Chapter name",
+    "number": 1,
+    "bank": [
+      {
+        "status": null,
+        "text": "The capital of France is ________.",
+        "type": "ShortAnswer",
+        "options": [],
+        "correct_option_ids": [],
+        "correct_answer": "Paris",
+        "review_tag": []
+      },
+      {
+        "status": null,
+        "text": "Which city is the capital of France?",
+        "type": "SingleChoice",
+        "options": [
+          { "id": "A", "text": "Berlin" },
+          { "id": "B", "text": "Paris" },
+          { "id": "C", "text": "Rome" },
+          { "id": "D", "text": "Madrid" }
+        ],
+        "correct_option_ids": ["B"],
+        "correct_answer": "B",
+        "review_tag": []
+      }
+    ],
+    "know": []
+  }
+]
 
-below is the user's knowledge base: 
+Below is the user's knowledge base:

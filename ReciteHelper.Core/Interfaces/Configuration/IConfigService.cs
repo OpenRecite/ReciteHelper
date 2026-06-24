@@ -7,3 +7,4 @@ public interface IConfigService
     Task<ConfigOptions> LoadAsync();
     Task SaveAsync(ConfigOptions config);
 }
+ 

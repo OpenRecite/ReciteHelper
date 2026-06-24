@@ -1,10 +1,11 @@
 using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.SharedKernel;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ReciteHelper.Core.Entities;
 
-public class Chapter : Entity
+public class Chapter : Entity, IJsonOnDeserialized
 {
     [JsonConstructor]
     public Chapter() { }
@@ -20,4 +21,36 @@ public class Chapter : Entity
 
     [JsonPropertyName("know")]
     public List<KnowledgePoint>? KnowledgePoints { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+
+    public void OnDeserialized()
+    {
+        Questions ??= ReadList<Question>("questions")
+            ?? ReadList<Question>("Questions");
+        KnowledgePoints ??= ReadList<KnowledgePoint>("knowledge_points")
+            ?? ReadList<KnowledgePoint>("knowledgePoints")
+            ?? ReadList<KnowledgePoint>("KnowledgePoints");
+
+        ExtensionData = null;
+    }
+
+    private List<T>? ReadList<T>(string propertyName)
+    {
+        if (ExtensionData is null || !ExtensionData.TryGetValue(propertyName, out var element))
+            return null;
+
+        if (element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return null;
+
+        try
+        {
+            return element.Deserialize<List<T>>();
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
 }

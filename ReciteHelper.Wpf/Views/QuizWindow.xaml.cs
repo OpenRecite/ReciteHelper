@@ -28,6 +28,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     private string _chapterName = "";
     private Project _project = new();
     private DateTime _startTime = DateTime.Now;
+    private string? _selectedChoiceId;
 
     public QuizWindow(Project project, string chapterName, IQuizService quizService, IProjectFileService projectFileService)
     {
@@ -122,9 +123,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         TotalQuestionsText.Text = _totalQuestions.ToString();
         QuestionTextBlock.Text = currentQuestion.Question!.Text;
 
-        // Clear the answer input box
-        AnswerTextBox.Text = "";
-        AnswerTextBox.IsEnabled = currentQuestion.Status == AnswerStatus.NotAnswered;
+        ConfigureAnswerInput(currentQuestion);
 
         // Update button state
         PrevButton.IsEnabled = _currentQuestionIndex > 0;
@@ -141,6 +140,36 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         }
 
         UpdateAnswerCardStyles();
+    }
+
+    private void ConfigureAnswerInput(QuestionItem currentQuestion)
+    {
+        var question = currentQuestion.Question!;
+        var isEnabled = currentQuestion.Status == AnswerStatus.NotAnswered;
+
+        if (question.IsSingleChoice)
+        {
+            _selectedChoiceId = Question.ExtractOptionId(currentQuestion.UserAnswer);
+            AnswerPromptText.Text = "请选择答案：";
+            AnswerTextBox.Text = "";
+            AnswerTextBox.Visibility = Visibility.Collapsed;
+            ChoiceOptionsItemsControl.Visibility = Visibility.Visible;
+            ChoiceOptionsItemsControl.IsEnabled = isEnabled;
+            ChoiceOptionsItemsControl.ItemsSource = question.Options;
+        }
+        else
+        {
+            _selectedChoiceId = null;
+            AnswerPromptText.Text = "请输入答案：";
+            ChoiceOptionsItemsControl.ItemsSource = null;
+            ChoiceOptionsItemsControl.Visibility = Visibility.Collapsed;
+            AnswerTextBox.Visibility = Visibility.Visible;
+            AnswerTextBox.Text = "";
+            AnswerTextBox.IsEnabled = isEnabled;
+        }
+
+        if (isEnabled)
+            _startTime = DateTime.Now;
     }
 
     private void UpdateAnswerCardStyles()
@@ -209,7 +238,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         }
 
         UserAnswerText.Text = question.UserAnswer ?? "";
-        CorrectAnswerText.Text = question.Question.CorrectAnswer;
+        CorrectAnswerText.Text = question.Question.GetCorrectAnswerText();
     }
 
     private void LocateCurrent()
@@ -226,14 +255,16 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
 
     private async void SubmitButton_Click(object sender, RoutedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(AnswerTextBox.Text))
+        var currentQuestion = _questions[_currentQuestionIndex];
+        var answerText = GetCurrentAnswerText(currentQuestion);
+
+        if (string.IsNullOrWhiteSpace(answerText))
         {
             MessageBox.Show("请输入答案", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        var currentQuestion = _questions[_currentQuestionIndex];
-        currentQuestion.UserAnswer = AnswerTextBox.Text.Trim();
+        currentQuestion.UserAnswer = answerText.Trim();
 
         var answerResult = await _quizService.ProcessAnswerAsync(
             currentQuestion.Question!,
@@ -245,6 +276,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         // Show result
         ShowResult(currentQuestion);
         AnswerTextBox.IsEnabled = false;
+        ChoiceOptionsItemsControl.IsEnabled = false;
         UpdateAnswerCardStyles();
 
         var tagCount = _questions[_currentQuestionIndex].Question!.ReviewTag.Count;
@@ -258,6 +290,14 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         _latest.Add(answerResult.IsCorrect);
         if (_latest.EqualsTo(false) && Config.Configure.PhonkOptions.EnablePhonk)
             await PlayPhonkEffect();
+    }
+
+    private string GetCurrentAnswerText(QuestionItem currentQuestion)
+    {
+        var question = currentQuestion.Question!;
+        return question.IsSingleChoice
+            ? question.GetOptionDisplayText(_selectedChoiceId)
+            : AnswerTextBox.Text.Trim();
     }
 
     private async Task PlayPhonkEffect()
@@ -325,14 +365,18 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         {
             _currentQuestionIndex++;
             UpdateDisplay();
-
-            _startTime = DateTime.Now;
         }
     }
 
     private void AnswerTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
         // Trash
+    }
+
+    private void ChoiceOption_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is RadioButton radioButton)
+            _selectedChoiceId = radioButton.Tag?.ToString();
     }
 
 

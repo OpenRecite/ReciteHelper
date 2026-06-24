@@ -102,6 +102,46 @@
             <Setter Property="CornerRadius" Value="4" />
             <Setter Property="Padding" Value="16" />
         </Style>
+
+        <Style x:Key="ChoiceOptionRadioStyle" TargetType="RadioButton">
+            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="Padding" Value="14,12" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#DEE2E6" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Foreground" Value="#333333" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border
+                            x:Name="OptionBorder"
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="4">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="OptionBorder" Property="BorderBrush" Value="#007ACC" />
+                                <Setter TargetName="OptionBorder" Property="Background" Value="#F3F9FD" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="OptionBorder" Property="BorderBrush" Value="#007ACC" />
+                                <Setter TargetName="OptionBorder" Property="Background" Value="#E7F3FF" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="OptionBorder" Property="Background" Value="#F8F9FA" />
+                                <Setter Property="Foreground" Value="#6C757D" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -301,6 +341,7 @@
                 CornerRadius="4">
                 <StackPanel>
                     <TextBlock
+                        x:Name="AnswerPromptText"
                         Margin="0,0,0,12"
                         FontSize="13"
                         FontWeight="SemiBold"
@@ -317,6 +358,20 @@
                         TextChanged="AnswerTextBox_TextChanged"
                         TextWrapping="Wrap"
                         VerticalScrollBarVisibility="Auto" />
+                    <ItemsControl
+                        x:Name="ChoiceOptionsItemsControl"
+                        Visibility="Collapsed">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <RadioButton
+                                    Checked="ChoiceOption_Checked"
+                                    Content="{Binding DisplayText}"
+                                    GroupName="QuizChoiceOptions"
+                                    Style="{StaticResource ChoiceOptionRadioStyle}"
+                                    Tag="{Binding Id}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     <StackPanel
                         Margin="0,12,0,0"
                         HorizontalAlignment="Right"

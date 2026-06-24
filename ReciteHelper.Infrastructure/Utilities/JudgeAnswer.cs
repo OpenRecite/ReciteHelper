@@ -34,7 +34,9 @@ public static class JudgeAnswer
 
     public static bool Run(Question question, string? userAnswer)
     {
-        return Run(userAnswer, question.CorrectAnswer);
+        return question.IsSingleChoice
+            ? question.IsCorrectChoiceAnswer(userAnswer)
+            : Run(userAnswer, question.CorrectAnswer);
     }
 
     public static double CalculateSimilarity(string? userAnswer, string? correctAnswer)
