@@ -1,11 +1,20 @@
-﻿using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.Entities;
 using System.Text.Json;
 
 namespace ReciteHelper.Core.ValueObjects;
 
-public class FileVectorStore(string filePath)
+public class FileVectorStore
 {
-    private List<VectorEntry> _entries = new();
+    private readonly string _filePath;
+    private List<VectorEntry> _entries = [];
+
+    public FileVectorStore(string filePath)
+    {
+        _filePath = filePath;
+        Load();
+    }
+
+    public IReadOnlyList<VectorEntry> Entries => _entries;
 
     public void Add(VectorEntry entry)
     {
@@ -28,22 +37,37 @@ public class FileVectorStore(string filePath)
             .ToList();
     }
 
-    private void Save() => File.WriteAllText(filePath, JsonSerializer.Serialize(_entries));
-    private void Load()
+    private void Save()
     {
-        if (File.Exists(filePath))
-            _entries = JsonSerializer.Deserialize<List<VectorEntry>>(File.ReadAllText(filePath)) ?? new();
+        Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
+        File.WriteAllText(_filePath, JsonSerializer.Serialize(_entries, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        }));
     }
 
-    private float CosineSimilarity(float[] a, float[] b)
+    private void Load()
     {
+        if (File.Exists(_filePath))
+            _entries = JsonSerializer.Deserialize<List<VectorEntry>>(File.ReadAllText(_filePath)) ?? [];
+    }
+
+    private static float CosineSimilarity(float[] a, float[] b)
+    {
+        if (a.Length != b.Length || a.Length == 0)
+            return 0;
+
         float dot = 0, magA = 0, magB = 0;
-        for (int i = 0; i < a.Length; i++)
+        for (var i = 0; i < a.Length; i++)
         {
             dot += a[i] * b[i];
             magA += a[i] * a[i];
             magB += b[i] * b[i];
         }
+
+        if (magA == 0 || magB == 0)
+            return 0;
+
         return dot / (float)(Math.Sqrt(magA) * Math.Sqrt(magB));
     }
 }

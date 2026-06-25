@@ -13,7 +13,7 @@ using ReciteHelper.Core.ValueObjects;
 
 namespace ReciteHelper.Infrastructure.Services
 {
-    internal class KnowledgeBaseService(IConfigService cfgService) : IKnowledgeBaseService
+    public class KnowledgeBaseService(IConfigService cfgService) : IKnowledgeBaseService
     {
         private readonly int _chunkSize = 1500;
         private readonly int _overlap = 50;
@@ -21,18 +21,27 @@ namespace ReciteHelper.Infrastructure.Services
         private ChatClient _chatClient;
         private EmbeddingClient _embedClient;
 
-        private const int MaxConcurrentRequests = 16;
+        private const int MaxConcurrentRequests = 4;
         private const int BatchSize = 10;
 
         private IConfigService configService = cfgService;
 
         public async Task<FileVectorStore> Build(string projectPath, string text)
         {
-            // Wow, such a magic pill!
+            if (string.IsNullOrWhiteSpace(text))
+                throw new InvalidOperationException("知识库构建失败：题库文本为空。");
 
             var slices = Slice(text);
+            if (slices.Count == 0)
+                throw new InvalidOperationException("知识库构建失败：未切分出有效文本。");
 
             var cfg = await configService.LoadAsync();
+            if (string.IsNullOrWhiteSpace(cfg.DeepSeekKey))
+                throw new InvalidOperationException("知识库构建失败：未配置 DeepSeek Key。");
+
+            if (string.IsNullOrWhiteSpace(cfg.QwenKey))
+                throw new InvalidOperationException("知识库构建失败：未配置 Qwen Key。");
+
             var src = new CancellationTokenSource();
 
             _chatClient = new OpenAIClient(new ApiKeyCredential(cfg.DeepSeekKey!), new OpenAIClientOptions
@@ -246,7 +255,7 @@ namespace ReciteHelper.Infrastructure.Services
                 MaxOutputTokenCount = 66666
             });
 
-            var json = response.Value.Content[0].Text;
+            var json = ExtractJsonContent(response.Value.Content[0].Text);
             return ParseResponse(json);
         }
 
@@ -307,6 +316,32 @@ namespace ReciteHelper.Infrastructure.Services
             return result;
         }
 
+        private static string ExtractJsonContent(string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+                return "[]";
+
+            var trimmed = content.Trim();
+            var fenceStart = trimmed.IndexOf("```", StringComparison.Ordinal);
+            if (fenceStart >= 0)
+            {
+                var jsonStart = trimmed.IndexOf('\n', fenceStart);
+                if (jsonStart >= 0)
+                {
+                    var fenceEnd = trimmed.LastIndexOf("```", StringComparison.Ordinal);
+                    trimmed = fenceEnd > jsonStart
+                        ? trimmed[(jsonStart + 1)..fenceEnd].Trim()
+                        : trimmed[(jsonStart + 1)..].Trim();
+                }
+            }
+
+            var arrayStart = trimmed.IndexOf('[');
+            var arrayEnd = trimmed.LastIndexOf(']');
+            return arrayStart >= 0 && arrayEnd > arrayStart
+                ? trimmed[arrayStart..(arrayEnd + 1)]
+                : trimmed;
+        }
+
         public async Task<Dictionary<Semantics, float[]>> EmbedAsync(
             Dictionary<Semantics, string> semanticChunks,
             CancellationToken cts)
@@ -364,10 +399,15 @@ namespace ReciteHelper.Infrastructure.Services
                 .Select((kvp, idx) => new VectorEntry
                 {
                     Id = idx,
-                    Semantics = kvp.Key,
+                    Semantics = new Semantics
+                    {
+                        Id = idx,
+                        Tags = kvp.Key.Tags,
+                        Summary = kvp.Key.Summary
+                    },
                     Text = kvp.Value,
                     Vector = vectors[kvp.Key],
-                    SourceFile = "srcFile",
+                    SourceFile = "question-bank",
                     CreatedAt = DateTime.UtcNow
                 })
                 .ToList();

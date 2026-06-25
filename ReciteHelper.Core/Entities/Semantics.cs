@@ -15,7 +15,7 @@ public class Semantics : Entity
 
     public override int GetHashCode()
     {
-        return Summary.GetHashCode();
+        return Summary?.GetHashCode() ?? 0;
     }
 }
 

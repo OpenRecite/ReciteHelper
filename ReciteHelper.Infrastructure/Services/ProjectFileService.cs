@@ -24,6 +24,13 @@ public sealed class ProjectFileService : IProjectFileService
         var project = await JsonSerializer.DeserializeAsync<Project>(stream);
         project?.UpdateLastAccessed();
 
+        if (project?.KnowledgeBasePath is not null)
+        {
+            var knowledgeBasePath = ResolveProjectRelativePath(projectPath, project.KnowledgeBasePath);
+            if (File.Exists(knowledgeBasePath))
+                project.LoadKnowledgeBase(new FileVectorStore(knowledgeBasePath));
+        }
+
         return project;
     }
 
@@ -63,6 +70,16 @@ public sealed class ProjectFileService : IProjectFileService
         var destinationPath = Path.Combine(exactFolder, importedFileName);
         File.Copy(sourcePath, destinationPath, true);
 
+        if (!string.IsNullOrWhiteSpace(manifest.KnowledgeBaseFile))
+        {
+            var sourceKnowledgeBasePath = Path.Combine(tempFolder, manifest.KnowledgeBaseFile);
+            if (File.Exists(sourceKnowledgeBasePath))
+            {
+                var destinationKnowledgeBasePath = Path.Combine(exactFolder, Path.GetFileName(manifest.KnowledgeBaseFile));
+                File.Copy(sourceKnowledgeBasePath, destinationKnowledgeBasePath, true);
+            }
+        }
+
         return new ImportedProject(destinationPath, importedFileName);
     }
 
@@ -80,7 +97,8 @@ public sealed class ProjectFileService : IProjectFileService
         var manifest = Manifest.Create(
             project.QuestionBankPath,
             version,
-            exportProjectFileName);
+            exportProjectFileName,
+            project.KnowledgeBasePath);
 
         var manifestString = JsonSerializer.Serialize(
             manifest,
@@ -90,6 +108,16 @@ public sealed class ProjectFileService : IProjectFileService
         var sourceProjectPath = Path.Combine(folderPath, $"{project.ProjectName}.rhproj");
         var exportProjectPath = Path.Combine(outputFolderPath, exportProjectFileName);
         File.Copy(sourceProjectPath, exportProjectPath, true);
+
+        if (!string.IsNullOrWhiteSpace(project.KnowledgeBasePath))
+        {
+            var sourceKnowledgeBasePath = ResolveProjectRelativePath(sourceProjectPath, project.KnowledgeBasePath);
+            if (File.Exists(sourceKnowledgeBasePath))
+            {
+                var exportKnowledgeBasePath = Path.Combine(outputFolderPath, Path.GetFileName(project.KnowledgeBasePath));
+                File.Copy(sourceKnowledgeBasePath, exportKnowledgeBasePath, true);
+            }
+        }
 
         await ResetExportedAnswerStatusAsync(exportProjectPath);
 
@@ -122,5 +150,12 @@ public sealed class ProjectFileService : IProjectFileService
 
         var clearText = JsonSerializer.Serialize(project, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(exportProjectPath, clearText);
+    }
+
+    private static string ResolveProjectRelativePath(string projectPath, string path)
+    {
+        return Path.IsPathRooted(path)
+            ? path
+            : Path.Combine(Path.GetDirectoryName(projectPath)!, path);
     }
 }

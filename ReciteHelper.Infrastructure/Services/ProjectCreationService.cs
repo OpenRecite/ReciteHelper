@@ -25,11 +25,16 @@ public sealed partial class ProjectCreationService : IProjectCreationService
 
     private readonly IPromptProvider _promptProvider;
     private readonly IProjectFileService _projectFileService;
+    private readonly IKnowledgeBaseService _knowledgeBaseService;
 
-    public ProjectCreationService(IPromptProvider promptProvider, IProjectFileService projectFileService)
+    public ProjectCreationService(
+        IPromptProvider promptProvider,
+        IProjectFileService projectFileService,
+        IKnowledgeBaseService knowledgeBaseService)
     {
         _promptProvider = promptProvider;
         _projectFileService = projectFileService;
+        _knowledgeBaseService = knowledgeBaseService;
     }
 
     public async Task<CreateProjectResult> CreateAsync(
@@ -47,13 +52,15 @@ public sealed partial class ProjectCreationService : IProjectCreationService
             Chapters = [],
             StoragePath = request.StoragePath
         };
+        var knowledgeBaseSourceText = string.Empty;
 
         var firstExtension = Path.GetExtension(copiedQuestionBanks.FirstOrDefault() ?? string.Empty);
         if (firstExtension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
         {
+            knowledgeBaseSourceText = ExtractText.FromAutomatic(copiedQuestionBanks[0]);
             Report(progress, 1, 1, 0, 0, 1, 1);
             project.Chapters = await ProcessTextAsync(
-                ExtractText.FromAutomatic(copiedQuestionBanks[0]),
+                knowledgeBaseSourceText,
                 request.DeepSeekKey,
                 request.MissingStrategy,
                 progress);
@@ -68,6 +75,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
             {
                 var result = new List<Chapter>();
                 var round = 1;
+                knowledgeBaseSourceText = string.Join(Environment.NewLine, mergeFile.Contents);
                 foreach (var item in mergeFile.Contents)
                 {
                     Report(progress, 1, 1, 0, 0, round, mergeFile.Contents.Count);
@@ -84,11 +92,45 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         if (project.Chapters is null || !project.Chapters.Any(chapter => chapter.Questions is { Count: > 0 }))
             throw new InvalidOperationException("项目创建失败：未能从题库生成任何题目，请检查 AI 返回内容或题库文本提取结果。");
 
+        await BuildKnowledgeBaseAsync(project, projectDir, knowledgeBaseSourceText, progress);
+
         await _projectFileService.SaveProjectAsync(project);
 
         return new CreateProjectResult(
             project,
             Path.Combine(projectDir, $"{request.ProjectName}.rhproj"));
+    }
+
+    private async Task BuildKnowledgeBaseAsync(
+        Project project,
+        string projectDir,
+        string sourceText,
+        IProgress<ProjectCreationProgress>? progress)
+    {
+        if (string.IsNullOrWhiteSpace(sourceText))
+        {
+            project.MarkKnowledgeBaseBuildFailed("题库文本为空，未构建知识库。");
+            return;
+        }
+
+        Report(progress, null, null, null, null, null, null, "知识库构建中...");
+
+        const string knowledgeBaseFileName = "knowledge-base.json";
+        var knowledgeBasePath = Path.Combine(projectDir, knowledgeBaseFileName);
+
+        try
+        {
+            var store = await _knowledgeBaseService.Build(knowledgeBasePath, sourceText);
+            project.AttachKnowledgeBase(knowledgeBaseFileName, store);
+        }
+        catch (Exception ex)
+        {
+            if (File.Exists(knowledgeBasePath))
+                File.Delete(knowledgeBasePath);
+
+            project.MarkKnowledgeBaseBuildFailed(ex.Message);
+            Debug.WriteLine($"Failed to build knowledge base: {ex}");
+        }
     }
 
     private static List<string> CopyQuestionBanks(IEnumerable<string> questionBankPaths, string projectDir)

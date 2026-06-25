@@ -15,18 +15,22 @@ public class Manifest : ValueObject
     [JsonPropertyName("projectfile")]
     public string? ProjectFile { get; set; }
 
-    private Manifest(string? bankFile, string? version, string? projectFile)
+    [JsonPropertyName("knowledge_base")]
+    public string? KnowledgeBaseFile { get; set; }
+
+    private Manifest(string? bankFile, string? version, string? projectFile, string? knowledgeBaseFile)
     {
         BankFile = bankFile;
         Version = version;
         ProjectFile = projectFile;
+        KnowledgeBaseFile = knowledgeBaseFile;
     }
 
-    public static Manifest Create(string? bankFile, string? version, string? projectFile)
+    public static Manifest Create(string? bankFile, string? version, string? projectFile, string? knowledgeBaseFile = null)
     {
         return Create(() =>
         {
-            return new Manifest(bankFile, version, projectFile);
+            return new Manifest(bankFile, version, projectFile, knowledgeBaseFile);
         });
     }
 

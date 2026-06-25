@@ -1,4 +1,5 @@
 using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.SharedKernel;
 using System.Text.Json.Serialization;
 
@@ -21,6 +22,15 @@ public class Project : AggregateRoot
     [JsonPropertyName("chapter")]
     public List<Chapter>? Chapters { get; set; }
 
+    [JsonPropertyName("knowledge_base")]
+    public string? KnowledgeBasePath { get; set; }
+
+    [JsonPropertyName("knowledge_base_error")]
+    public string? KnowledgeBaseBuildError { get; set; }
+
+    [JsonIgnore]
+    public FileVectorStore? KnowledgeBase { get; private set; }
+
     [JsonPropertyName("last_accessed")]
     public DateTime LastAccessed { get; private set; }
 
@@ -36,5 +46,22 @@ public class Project : AggregateRoot
     public void UpdateLastAccessed()
     {
         LastAccessed = DateTime.Now;
+    }
+
+    public void AttachKnowledgeBase(string relativePath, FileVectorStore store)
+    {
+        KnowledgeBasePath = relativePath;
+        KnowledgeBase = store;
+        KnowledgeBaseBuildError = null;
+    }
+
+    public void LoadKnowledgeBase(FileVectorStore store)
+    {
+        KnowledgeBase = store;
+    }
+
+    public void MarkKnowledgeBaseBuildFailed(string error)
+    {
+        KnowledgeBaseBuildError = error;
     }
 }

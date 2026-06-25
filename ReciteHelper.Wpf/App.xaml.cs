@@ -40,6 +40,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IProjectFileService, ProjectFileService>();
         services.AddSingleton<IProjectCreationService, ProjectCreationService>();
         services.AddSingleton<IQuestionBankTextService, QuestionBankTextService>();
+        services.AddSingleton<IKnowledgeBaseService, KnowledgeBaseService>();
         services.AddSingleton<IAiChatService, AiChatService>();
         services.AddSingleton<IStartupCompatibilityService, StartupCompatibilityService>();
         services.AddSingleton<IRecentProjectService, RecentProjectService>();
