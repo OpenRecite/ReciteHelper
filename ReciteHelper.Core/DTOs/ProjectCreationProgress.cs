@@ -1,3 +1,5 @@
+using ReciteHelper.Core.Enums;
+
 namespace ReciteHelper.Core.DTOs;
 
 public sealed record ProjectCreationProgress(
@@ -7,4 +9,5 @@ public sealed record ProjectCreationProgress(
     int ClusterTotal,
     int RoundCurrent,
     int RoundTotal,
-    string? Label = null);
+    string? Label = null,
+    ProjectCreationStage Stage = ProjectCreationStage.KnowledgeExtraction);

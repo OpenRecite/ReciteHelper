@@ -41,6 +41,8 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         CreateProjectRequest request,
         IProgress<ProjectCreationProgress>? progress = null)
     {
+        Report(progress, 1, 1, 0, 0, 1, 1, "正在读取题库文件...", ProjectCreationStage.ReadingText);
+
         var projectDir = Path.Combine(request.StoragePath, request.ProjectName);
         Directory.CreateDirectory(projectDir);
 
@@ -58,7 +60,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         if (firstExtension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
         {
             knowledgeBaseSourceText = ExtractText.FromAutomatic(copiedQuestionBanks[0]);
-            Report(progress, 1, 1, 0, 0, 1, 1);
+            Report(progress, 1, 1, 0, 0, 1, 1, "题库文本读取完成。", ProjectCreationStage.ReadingText);
             project.Chapters = await ProcessTextAsync(
                 knowledgeBaseSourceText,
                 request.DeepSeekKey,
@@ -78,7 +80,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
                 knowledgeBaseSourceText = string.Join(Environment.NewLine, mergeFile.Contents);
                 foreach (var item in mergeFile.Contents)
                 {
-                    Report(progress, 1, 1, 0, 0, round, mergeFile.Contents.Count);
+                    Report(progress, 1, 1, 0, 0, round, mergeFile.Contents.Count, "正在读取合并题库片段...", ProjectCreationStage.ReadingText);
                     var cluster = await ProcessTextAsync(item, request.DeepSeekKey, request.MissingStrategy, progress);
                     if (cluster is not null)
                         result.AddRange(cluster);
@@ -93,6 +95,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
             throw new InvalidOperationException("项目创建失败：未能从题库生成任何题目，请检查 AI 返回内容或题库文本提取结果。");
 
         await BuildKnowledgeBaseAsync(project, projectDir, knowledgeBaseSourceText, progress);
+        Report(progress, 1, 1, 1, 1, 1, 1, "项目创建完成。", ProjectCreationStage.Completed);
 
         await _projectFileService.SaveProjectAsync(project);
 
@@ -113,7 +116,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
             return;
         }
 
-        Report(progress, null, null, null, null, null, null, "知识库构建中...");
+        Report(progress, 0, 1, 0, 1, null, null, "正在生成知识库向量...", ProjectCreationStage.VectorGeneration);
 
         const string knowledgeBaseFileName = "knowledge-base.json";
         var knowledgeBasePath = Path.Combine(projectDir, knowledgeBaseFileName);
@@ -122,6 +125,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         {
             var store = await _knowledgeBaseService.Build(knowledgeBasePath, sourceText);
             project.AttachKnowledgeBase(knowledgeBaseFileName, store);
+            Report(progress, 1, 1, 1, 1, null, null, "知识库向量生成完成。", ProjectCreationStage.VectorGeneration);
         }
         catch (Exception ex)
         {
@@ -130,6 +134,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
 
             project.MarkKnowledgeBaseBuildFailed(ex.Message);
             Debug.WriteLine($"Failed to build knowledge base: {ex}");
+            Report(progress, 1, 1, 1, 1, null, null, "知识库构建失败，项目将继续创建。", ProjectCreationStage.VectorGeneration);
         }
     }
 
@@ -154,7 +159,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         IProgress<ProjectCreationProgress>? progress)
     {
         var scanTotal = (int)Math.Ceiling(text.Length / (double)ChunkSize);
-        Report(progress, 1, scanTotal, 0, scanTotal, null, null);
+        Report(progress, 0, scanTotal, 0, scanTotal, null, null, "你的资料已经被切割完成，正在分块发送至 AI 生成知识点和相关题目。", ProjectCreationStage.KnowledgeExtraction);
 
         return await ClusterQuestionsAsync(text, deepSeekKey, missingStrategy, progress);
     }
@@ -221,7 +226,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
                 succeededIndexes.Add(chunk.Index);
 
                 var current = Interlocked.Increment(ref progressValue);
-                Report(progress, current + 1, chunks.Count, current + 1, chunks.Count, null, null);
+                Report(progress, current, chunks.Count, current, chunks.Count, null, null, $"已完成 {current}/{chunks.Count} 个文本块。", ProjectCreationStage.KnowledgeExtraction);
             }
             catch (Exception ex)
             {
@@ -278,7 +283,80 @@ public sealed partial class ProjectCreationService : IProjectCreationService
 
             RepairSplitChoiceOptions(chapter.Questions);
             NormalizeMalformedChoiceQuestions(chapter.Questions);
+            RemoveDeclarativeShortAnswerQuestions(chapter);
         }
+    }
+
+    private static void RemoveDeclarativeShortAnswerQuestions(Chapter chapter)
+    {
+        if (chapter.Questions is null || chapter.Questions.Count == 0)
+            return;
+
+        chapter.KnowledgePoints ??= [];
+        var validQuestions = new List<Question>();
+
+        foreach (var question in chapter.Questions)
+        {
+            question.Text = question.Text?.Trim();
+            question.CorrectAnswer = question.CorrectAnswer?.Trim();
+
+            if (string.IsNullOrWhiteSpace(question.Text))
+                continue;
+
+            if (question.IsSingleChoice || IsValidShortAnswerStem(question.Text))
+            {
+                validQuestions.Add(question);
+                continue;
+            }
+
+            if (TryConvertDeclarativeSentenceToBlank(question))
+            {
+                validQuestions.Add(question);
+                continue;
+            }
+
+            chapter.KnowledgePoints.Add(KnowledgePoint.Create(
+                CreateKnowledgePointName(question.Text),
+                question.Text));
+        }
+
+        chapter.Questions = validQuestions;
+    }
+
+    private static bool IsValidShortAnswerStem(string text)
+    {
+        if (BlankRegex().IsMatch(text) || text.Contains('?') || text.Contains('？'))
+            return true;
+
+        return ShortAnswerPromptRegex().IsMatch(text);
+    }
+
+    private static bool TryConvertDeclarativeSentenceToBlank(Question question)
+    {
+        var text = question.Text?.Trim();
+        var answer = question.CorrectAnswer?.Trim();
+        if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(answer))
+            return false;
+
+        if (string.Equals(text, answer, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var index = text.IndexOf(answer, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+            return false;
+
+        var remainingLength = text.Length - answer.Length;
+        if (answer.Length < 2 || remainingLength < 4)
+            return false;
+
+        question.Text = text.Remove(index, answer.Length).Insert(index, "________");
+        return IsValidShortAnswerStem(question.Text);
+    }
+
+    private static string CreateKnowledgePointName(string text)
+    {
+        var normalized = WhitespaceRegex().Replace(text, " ").Trim();
+        return normalized.Length <= 32 ? normalized : normalized[..32];
     }
 
     private static void RepairSplitChoiceOptions(List<Question> questions)
@@ -387,6 +465,15 @@ public sealed partial class ProjectCreationService : IProjectCreationService
     [GeneratedRegex(@"^\s*\(?\s*(?<id>[A-Da-d])\s*\)?\s*[\.、:：\)]\s*(?<text>.+?)\s*$")]
     private static partial Regex OptionOnlyRegex();
 
+    [GeneratedRegex(@"_{2,}|＿{2,}|-{3,}")]
+    private static partial Regex BlankRegex();
+
+    [GeneratedRegex(@"^\s*(名词解释|简述|说明|分析|比较|阐述|试述|论述|列举|举例|概括|描述|解释|指出|写出|回答|判断|计算|请|问)|(为什么|为何|如何|怎样|哪些|哪种|哪个|什么|是否|能否)")]
+    private static partial Regex ShortAnswerPromptRegex();
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex WhitespaceRegex();
+
     private async Task<List<List<Chapter>>> MergeChunksAsync(
         List<Chunk> chunks,
         string deepSeekKey,
@@ -434,7 +521,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
             }
         }
 
-        Report(progress, null, null, null, null, null, null, "分块聚类中...");
+        Report(progress, null, null, 0, chapterNames.Count, null, null, "正在合并相似章节并整理题目结构。", ProjectCreationStage.TextClustering);
         if (chapterNames.Count == 0)
             return FlattenGeneratedChapters(allChapter);
 
@@ -448,8 +535,10 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         if (cluster.Count == 0)
             return FlattenGeneratedChapters(allChapter);
 
-        foreach (var single in cluster)
+        for (var clusterIndex = 0; clusterIndex < cluster.Count; clusterIndex++)
         {
+            var single = cluster[clusterIndex];
+            Report(progress, null, null, clusterIndex + 1, cluster.Count, null, null, "正在写入聚类后的章节。", ProjectCreationStage.TextClustering);
             foreach (var individual in allChapter)
             {
                 foreach (var seg in individual)
@@ -526,7 +615,8 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         int? clusterTotal,
         int? roundCurrent,
         int? roundTotal,
-        string? label = null)
+        string? label = null,
+        ProjectCreationStage stage = ProjectCreationStage.KnowledgeExtraction)
     {
         progress?.Report(new ProjectCreationProgress(
             scanCurrent ?? 0,
@@ -535,6 +625,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
             clusterTotal ?? 0,
             roundCurrent ?? 0,
             roundTotal ?? 0,
-            label));
+            label,
+            stage));
     }
 }

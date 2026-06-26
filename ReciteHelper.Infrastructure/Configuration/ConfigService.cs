@@ -54,6 +54,8 @@ public class ConfigService : IConfigService
         if (string.IsNullOrEmpty(text) || !text.Contains('%'))
             return text;
 
+        // This damn AI has completely lost its mind; as long as it runs here,
+        // that’s good enough—I can't be bothered to do anything else
         var match = Regex.Match(
             text,
             "^%\\s*Environment\\.GetEnvironmentVariable\\(\"(?<name>[A-Za-z_][A-Za-z0-9_]*)\"\\)\\s*%$");

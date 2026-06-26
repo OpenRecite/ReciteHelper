@@ -30,6 +30,11 @@ public class KnowledgePoint : ValueObject
         IsMastered = isMastered;
     }
 
+    public static KnowledgePoint Create(string? name, string? contentMarkdown)
+    {
+        return new KnowledgePoint(name, contentMarkdown, false);
+    }
+
     public override T Clone<T>()
     {
         return (T)(object) new KnowledgePoint(Name, ContentMarkdown, IsMastered);

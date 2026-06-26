@@ -3,6 +3,7 @@
 	<Version>2</Version>
 	
 	<DeepSeekKey>%Environment.GetEnvironmentVariable("DSAPI")%</DeepSeekKey>
+	<QwenKey>%Environment.GetEnvironmentVariable("BitchSDAU")%</QwenKey>
 	<MissingStrategy>Ignore</MissingStrategy>
 	
 	<OCRAccess></OCRAccess>

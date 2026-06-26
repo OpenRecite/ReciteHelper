@@ -190,11 +190,16 @@ public partial class CreateProjectWindow : Window
             return;
         }
 
-        var progressWindow = new ProgressWindow();
+        var progressWindow = new ProgressWindow
+        {
+            Owner = this
+        };
         var progress = new Progress<ProjectCreationProgress>(value => UpdateProgress(progressWindow, value));
+        var succeeded = false;
 
         try
         {
+            ConfirmButton.IsEnabled = false;
             progressWindow.Show();
 
             var request = new CreateProjectRequest(
@@ -209,6 +214,7 @@ public partial class CreateProjectWindow : Window
             MessageBox.Show("成功了...");
             _updateRecentProject(result.ProjectPath, result.Project.ProjectName!);
 
+            succeeded = true;
             DialogResult = true;
             Close();
         }
@@ -219,29 +225,17 @@ public partial class CreateProjectWindow : Window
         }
         finally
         {
-            progressWindow.Close();
+            if (progressWindow.IsVisible)
+                progressWindow.Close();
+
+            if (!succeeded)
+                ConfirmButton.IsEnabled = true;
         }
     }
 
     private static void UpdateProgress(ProgressWindow progressWindow, ProjectCreationProgress progress)
     {
-        if (progress.ScanTotal > 0)
-            progressWindow.ScanTotal = progress.ScanTotal;
-
-        if (progress.ScanCurrent > 0)
-            progressWindow.ScanCurrent = progress.ScanCurrent;
-
-        if (progress.ClusterTotal > 0)
-            progressWindow.ClusterTotal = progress.ClusterTotal;
-
-        if (progress.ClusterCurrent > 0)
-            progressWindow.ClusterCurrent = progress.ClusterCurrent;
-
-        if (progress.RoundTotal > 0)
-            progressWindow.RoundTotal = progress.RoundTotal;
-
-        if (progress.RoundCurrent > 0)
-            progressWindow.RoundCurrent = progress.RoundCurrent;
+        progressWindow.ApplyProgress(progress);
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e)

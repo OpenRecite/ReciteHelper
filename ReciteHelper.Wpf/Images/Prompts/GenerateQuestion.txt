@@ -4,22 +4,24 @@ Generate both short-answer questions and single-choice questions.
 
 Short-answer questions:
 - Use type = "ShortAnswer".
-- Extract one key knowledge point per question.
-- Replace the key knowledge point with ________ when the original sentence is suitable for memorization.
+- The text field must be a real question, task prompt, or fill-in-the-blank stem. Never copy a declarative knowledge sentence directly as a question.
+- When the source sentence is suitable for memorization, replace the answer part with ________. Do not leave the full source sentence unchanged.
 - For definition questions, format the stem as: 名词解释: 名词.
+- For explanation questions, start with words such as 简述、说明、分析、为什么、如何、哪些, so the user knows what to answer.
 - Fill correct_answer with the expected answer text.
 - Keep options and correct_option_ids as empty arrays.
 
 Single-choice questions:
 - Use type = "SingleChoice".
 - Generate exactly four options with ids A, B, C, and D.
-- Put only the stem in text. Do not embed A/B/C/D options inside text.
+- Put only a clear question stem in text. Do not embed A/B/C/D options inside text.
 - Fill options as structured objects.
 - Fill correct_option_ids with exactly one id, such as ["B"].
 - Fill correct_answer with the same correct id, such as "B".
 - Do not make all questions single-choice, and do not omit single-choice questions entirely.
 
 If a sentence contains multiple knowledge points, generate multiple questions instead of multiple blanks in one question.
+Knowledge points that are only statements should go into know, not bank. Do not put pure declarative sentences in bank.
 Divide the content into several chapters.
 
 Return only valid JSON for List<Chapter>. Do not include Markdown fences.

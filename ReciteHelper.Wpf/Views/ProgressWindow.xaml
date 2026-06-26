@@ -2,176 +2,210 @@
     x:Class="ReciteHelper.Wpf.Views.ProgressWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:local="clr-namespace:ReciteHelper.Wpf.Views"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Title="进度监控"
-    Width="500"
-    Height="320"
+    Title="创建项目"
+    Width="720"
+    Height="460"
+    Background="#F6F8FB"
     ResizeMode="NoResize"
-    WindowStartupLocation="CenterOwner"
-    WindowStyle="SingleBorderWindow"
-    mc:Ignorable="d">
+    WindowStartupLocation="CenterOwner">
 
     <Window.Resources>
-        <Style TargetType="TextBlock">
-            <Setter Property="FontSize" Value="14" />
+        <Style x:Key="StepCircleStyle" TargetType="Border">
+            <Setter Property="Width" Value="42" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="CornerRadius" Value="21" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="StepTextStyle" TargetType="TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-
-        <Style TargetType="ProgressBar">
-            <Setter Property="Height" Value="16" />
-            <Setter Property="Margin" Value="0,8" />
-            <Setter Property="Foreground" Value="#007ACC" />
-        </Style>
-
-        <Style x:Key="ProgressLabel" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Foreground" Value="#555" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-        </Style>
-
-        <Style x:Key="ProgressValue" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Foreground" Value="#007ACC" />
+            <Setter Property="FontSize" Value="15" />
             <Setter Property="FontWeight" Value="Bold" />
         </Style>
 
-        <LinearGradientBrush x:Key="WindowBackground" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Offset="0" Color="#F5F9FF" />
-            <GradientStop Offset="1" Color="#FFFFFF" />
-        </LinearGradientBrush>
+        <Style x:Key="StepLabelStyle" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,10,0,0" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#475569" />
+        </Style>
     </Window.Resources>
 
-    <Grid Background="{StaticResource WindowBackground}">
+    <Grid Margin="28">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!--  Title Area  -->
-        <Border
-            Grid.Row="0"
-            Padding="20,15"
-            Background="#007ACC">
+        <StackPanel Grid.Row="0">
             <TextBlock
-                HorizontalAlignment="Center"
-                FontSize="18"
+                FontSize="22"
                 FontWeight="Bold"
-                Foreground="White"
-                Text="扫描进度监控" />
-        </Border>
-
-        <StackPanel Grid.Row="1" Margin="30,25">
-
-            <!--  Number of scan cycles  -->
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <Grid Grid.Row="0" Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock
-                        Grid.Column="0"
-                        Style="{StaticResource ProgressLabel}"
-                        Text="扫描轮数" />
-
-                    <TextBlock Grid.Column="2" Style="{StaticResource ProgressValue}">
-                        <Run Text="{Binding RoundCurrent, Mode=OneWay}" />
-                        <Run Text="/" />
-                        <Run Text="{Binding RoundTotal, Mode=OneWay}" />
-                    </TextBlock>
-                </Grid>
-
-                <ProgressBar
-                    Grid.Row="1"
-                    Maximum="{Binding RoundTotal, Mode=OneWay}"
-                    Value="{Binding RoundCurrent, Mode=OneWay}" />
-            </Grid>
-
-            <!--  Scan count  -->
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <Grid Grid.Row="0" Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock
-                        Grid.Column="0"
-                        Style="{StaticResource ProgressLabel}"
-                        Text="当前轮次扫描" />
-
-                    <TextBlock Grid.Column="2" Style="{StaticResource ProgressValue}">
-                        <Run Text="{Binding ScanCurrent, Mode=OneWay}" />
-                        <Run Text="/" />
-                        <Run Text="{Binding ScanTotal, Mode=OneWay}" />
-                    </TextBlock>
-                </Grid>
-
-                <ProgressBar
-                    Grid.Row="1"
-                    Maximum="{Binding ScanTotal, Mode=OneWay}"
-                    Value="{Binding ScanCurrent, Mode=OneWay}" />
-            </Grid>
-
-            <!--  聚类进度  -->
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <Grid Grid.Row="0" Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock
-                        Grid.Column="0"
-                        Style="{StaticResource ProgressLabel}"
-                        Text="总计数" />
-
-                    <TextBlock Grid.Column="2" Style="{StaticResource ProgressValue}">
-                        <Run Text="{Binding ClusterCurrent, Mode=OneWay}" />
-                        <Run Text="/" />
-                        <Run Text="{Binding ClusterTotal, Mode=OneWay}" />
-                    </TextBlock>
-                </Grid>
-
-                <ProgressBar
-                    Grid.Row="1"
-                    Maximum="{Binding ClusterTotal, Mode=OneWay}"
-                    Value="{Binding ClusterCurrent, Mode=OneWay}" />
-            </Grid>
+                Foreground="#172033"
+                Text="正在创建复习项目" />
+            <TextBlock
+                Margin="0,6,0,0"
+                FontSize="13"
+                Foreground="#64748B"
+                Text="请保持窗口打开，处理完成后会自动关闭。" />
         </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,30,0,26">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="74" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="74" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="74" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <Border Background="{Binding Step1Brush}" Style="{StaticResource StepCircleStyle}">
+                    <TextBlock
+                        Foreground="{Binding Step1TextBrush}"
+                        Style="{StaticResource StepTextStyle}"
+                        Text="1" />
+                </Border>
+                <TextBlock Style="{StaticResource StepLabelStyle}" Text="读取文本" />
+            </StackPanel>
+
+            <Border
+                Grid.Column="1"
+                Height="4"
+                Margin="0,20,0,0"
+                VerticalAlignment="Top"
+                Background="{Binding Line1Brush}"
+                CornerRadius="2" />
+
+            <StackPanel Grid.Column="2">
+                <Border Background="{Binding Step2Brush}" Style="{StaticResource StepCircleStyle}">
+                    <TextBlock
+                        Foreground="{Binding Step2TextBrush}"
+                        Style="{StaticResource StepTextStyle}"
+                        Text="2" />
+                </Border>
+                <TextBlock Style="{StaticResource StepLabelStyle}" Text="知识提取" />
+            </StackPanel>
+
+            <Border
+                Grid.Column="3"
+                Height="4"
+                Margin="0,20,0,0"
+                VerticalAlignment="Top"
+                Background="{Binding Line2Brush}"
+                CornerRadius="2" />
+
+            <StackPanel Grid.Column="4">
+                <Border Background="{Binding Step3Brush}" Style="{StaticResource StepCircleStyle}">
+                    <TextBlock
+                        Foreground="{Binding Step3TextBrush}"
+                        Style="{StaticResource StepTextStyle}"
+                        Text="3" />
+                </Border>
+                <TextBlock Style="{StaticResource StepLabelStyle}" Text="文本聚类" />
+            </StackPanel>
+
+            <Border
+                Grid.Column="5"
+                Height="4"
+                Margin="0,20,0,0"
+                VerticalAlignment="Top"
+                Background="{Binding Line3Brush}"
+                CornerRadius="2" />
+
+            <StackPanel Grid.Column="6">
+                <Border Background="{Binding Step4Brush}" Style="{StaticResource StepCircleStyle}">
+                    <TextBlock
+                        Foreground="{Binding Step4TextBrush}"
+                        Style="{StaticResource StepTextStyle}"
+                        Text="4" />
+                </Border>
+                <TextBlock Style="{StaticResource StepLabelStyle}" Text="向量生成" />
+            </StackPanel>
+        </Grid>
 
         <Border
             Grid.Row="2"
-            Background="#F0F4F9"
-            BorderBrush="#E0E6ED"
-            BorderThickness="0,1,0,0">
-            <TextBlock
-                Margin="15,10"
-                FontSize="12"
-                Foreground="#666"
-                Text="请勿关闭窗口，处理完成后会自动关闭..." />
+            Padding="24"
+            Background="White"
+            BorderBrush="#E2E8F0"
+            BorderThickness="1"
+            CornerRadius="8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock
+                    Grid.Row="0"
+                    FontSize="20"
+                    FontWeight="Bold"
+                    Foreground="#172033"
+                    Text="{Binding CurrentTitle}" />
+
+                <TextBlock
+                    Grid.Row="1"
+                    Margin="0,12,0,0"
+                    FontSize="14"
+                    Foreground="#475569"
+                    LineHeight="23"
+                    Text="{Binding CurrentDescription}"
+                    TextWrapping="Wrap" />
+
+                <Grid Grid.Row="3" Margin="0,28,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock
+                            Grid.Column="0"
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            Foreground="#334155"
+                            Text="{Binding DetailLabel}" />
+                        <TextBlock
+                            Grid.Column="1"
+                            FontSize="13"
+                            FontWeight="Bold"
+                            Foreground="#007ACC"
+                            Text="{Binding ProgressText}" />
+                    </Grid>
+
+                    <ProgressBar
+                        Grid.Row="1"
+                        Height="12"
+                        Margin="0,10,0,0"
+                        Background="#E8EEF5"
+                        BorderThickness="0"
+                        Foreground="#007ACC"
+                        IsIndeterminate="{Binding IsProgressIndeterminate, Mode=OneWay}"
+                        Maximum="{Binding ProgressTotal, Mode=OneWay}"
+                        Value="{Binding ProgressCurrent, Mode=OneWay}" />
+                </Grid>
+            </Grid>
         </Border>
+
+        <TextBlock
+            Grid.Row="3"
+            Margin="0,16,0,0"
+            HorizontalAlignment="Center"
+            FontSize="12"
+            Foreground="#64748B"
+            Text="这个阶段可能持续一段时间，请带薪等待..." />
     </Grid>
 </Window>

@@ -5,7 +5,10 @@ using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Application.Services;
 using ReciteHelper.Infrastructure.Configuration;
 using ReciteHelper.Infrastructure.Services;
+using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace ReciteHelper.Wpf;
 
@@ -15,6 +18,10 @@ public partial class App : System.Windows.Application
 
     private async void Application_Startup(object sender, StartupEventArgs e)
     {
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+
         var services = new ServiceCollection();
 
         var configService = new ConfigService();
@@ -57,5 +64,54 @@ public partial class App : System.Windows.Application
 
         var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
         mainWindow.Show();
+    }
+
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        ReportUnhandledException(e.Exception);
+        e.Handled = true;
+    }
+
+    private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+    {
+        if (e.ExceptionObject is Exception exception)
+            ReportUnhandledException(exception);
+    }
+
+    private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        ReportUnhandledException(e.Exception);
+        e.SetObserved();
+    }
+
+    private static void ReportUnhandledException(Exception exception)
+    {
+        try
+        {
+            var logDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "ReciteHelper");
+            Directory.CreateDirectory(logDirectory);
+            File.AppendAllText(
+                Path.Combine(logDirectory, "crash.log"),
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {exception}{Environment.NewLine}{Environment.NewLine}");
+        }
+        catch
+        {
+            // Last-resort error reporting must never throw another exception.
+        }
+
+        try
+        {
+            MessageBox.Show(
+                $"程序遇到未处理异常：{exception.Message}",
+                "未处理异常",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        catch
+        {
+            // The dispatcher may already be shutting down.
+        }
     }
 }
