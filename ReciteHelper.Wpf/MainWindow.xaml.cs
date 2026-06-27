@@ -175,8 +175,11 @@ public partial class MainWindow : Window
 
     private async void RecentProject_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button button && button.Tag is string projectPath)
+        if (sender is Button { Tag: string projectPath })
+
             await OpenProjectAsync(projectPath);
+
+
     }
 
     private void CreateNewProject_Click(object sender, RoutedEventArgs e)

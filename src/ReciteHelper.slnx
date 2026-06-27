@@ -1,8 +1,0 @@
-<Solution>
-  <Project Path="../ReciteHelper.Application/ReciteHelper.Application.csproj" Id="6c3c490b-b37f-4744-9f15-7631c28349d7" />
-  <Project Path="../ReciteHelper.Core/ReciteHelper.Core.csproj" Id="90255147-960e-4dcb-b3de-4f04e7166c84" />
-  <Project Path="../ReciteHelper.Infrastructure/ReciteHelper.Infrastructure.csproj" Id="d5ca1e6b-08a5-4f0e-bb7e-51bff64fbc00" />
-  <Project Path="../ReciteHelper.SharedKernel/ReciteHelper.SharedKernel.csproj" Id="e26bded8-c00e-4f78-a3cf-71fa784d1c26" />
-  <Project Path="../ReciteHelper.Wpf/ReciteHelper.Wpf.csproj" Id="09ac9cb7-fa14-483f-86c9-3a8cfa954a31" />
-  <Project Path="..\external\AquaAvgFramework\AquaAvgFramework.csproj" />
-</Solution>

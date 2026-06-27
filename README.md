@@ -1,10 +1,6 @@
 # ReciteHelper
 
-<div style="display: flex; align-items: center; justify-content: center;">
-  <img src="docs/Resources/Logos/clublogo.png" style="height: 50px; width: auto;" />
-  <span style="margin: 0 15px;">&nbsp;</span>
-  <img src="docs/Resources/Logos/caylogo.png" style="height: 50px; width: auto;" />
-</div>
+<image src="docs/Resources/Dev/photo.png" >
 
 <br/>
 
@@ -15,6 +11,13 @@ ReciteHelper 承诺永久保持开源、免费的性质。如果您感觉该项�
 由于开发者并非科班专业，因此本软件中代码中存在调试遗留、迷惑命名、随性拼写、参数锁死、变量客串、魔法数字、拼音乱入、僵尸代码、脆弱读写、环境依赖、人机缝合、注释欺诈、分大于总、线程互锁等等问题，导致运行相当不稳定。欢迎有能力的各位朋友们优化代码。
 
 本项目使用 C# (.NET 10 / WPF) 开发。
+
+<div style="display: flex; align-items: center; justify-content: center;">
+  <img src="docs/Resources/Logos/clublogo.png" style="height: 50px; width: auto;" />
+  <span style="margin: 0 15px;">&nbsp;</span>
+  <img src="docs/Resources/Logos/caylogo.png" style="height: 50px; width: auto;" />
+</div>
+
 
 ---
 
