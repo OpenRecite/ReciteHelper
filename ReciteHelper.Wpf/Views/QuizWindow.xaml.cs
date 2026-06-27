@@ -3,6 +3,7 @@ using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Enums;
 using ReciteHelper.Core.ValueObjects;
+using ReciteHelper.Core.DTOs;
 using ReciteHelper.Wpf.Models;
 using ReciteHelper.Wpf.ViewModels;
 using System.Collections.ObjectModel;
@@ -21,6 +22,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
 {
     private readonly IQuizService _quizService;
     private readonly IProjectFileService _projectFileService;
+    private readonly IQuestionHelpService _questionHelpService;
     private ObservableCollection<QuestionItem> _questions;
     private LatestBuffer<bool> _latest;
     private int _currentQuestionIndex = 0;
@@ -29,11 +31,19 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     private Project _project = new();
     private DateTime _startTime = DateTime.Now;
     private string? _selectedChoiceId;
+    private IReadOnlyList<KnowledgeBaseMatch> _helpMatches = [];
+    private CancellationTokenSource? _helpCancellation;
 
-    public QuizWindow(Project project, string chapterName, IQuizService quizService, IProjectFileService projectFileService)
+    public QuizWindow(
+        Project project,
+        string chapterName,
+        IQuizService quizService,
+        IProjectFileService projectFileService,
+        IQuestionHelpService questionHelpService)
     {
         _quizService = quizService;
         _projectFileService = projectFileService;
+        _questionHelpService = questionHelpService;
 
         InitializeComponent();
         DataContext = this;
@@ -48,10 +58,16 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     }
 
 
-    public QuizWindow(Project project, List<Question> recitePlan, IQuizService quizService, IProjectFileService projectFileService)
+    public QuizWindow(
+        Project project,
+        List<Question> recitePlan,
+        IQuizService quizService,
+        IProjectFileService projectFileService,
+        IQuestionHelpService questionHelpService)
     {
         _quizService = quizService;
         _projectFileService = projectFileService;
+        _questionHelpService = questionHelpService;
 
         InitializeComponent();
         DataContext = this;
@@ -115,6 +131,8 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     private void UpdateDisplay()
     {
         if (_questions == null || _questions.Count == 0) return;
+
+        ResetHelpPanel();
 
         var currentQuestion = _questions[_currentQuestionIndex];
 
@@ -220,6 +238,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     private void ShowResult(QuestionItem question)
     {
         ResultArea.Visibility = Visibility.Visible;
+        QuestionHelpButton.Visibility = Visibility.Collapsed;
 
         switch (question.Status)
         {
@@ -234,11 +253,126 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
                 ResultTitleText.Foreground = new SolidColorBrush(Color.FromRgb(114, 28, 36));
                 ResultArea.Background = new SolidColorBrush(Color.FromRgb(248, 215, 218));
                 ResultArea.BorderBrush = new SolidColorBrush(Color.FromRgb(245, 198, 203));
+                QuestionHelpButton.Visibility = HasUsableKnowledgeBase
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
                 break;
         }
 
         UserAnswerText.Text = question.UserAnswer ?? "";
         CorrectAnswerText.Text = question.Question.GetCorrectAnswerText();
+    }
+
+    private bool HasUsableKnowledgeBase => _project.KnowledgeBase is { Entries.Count: > 0 };
+
+    private async void QuestionHelpButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!HasUsableKnowledgeBase)
+            return;
+
+        var questionIndex = _currentQuestionIndex;
+        var currentQuestion = _questions[questionIndex];
+
+        _helpCancellation?.Cancel();
+        _helpCancellation?.Dispose();
+        _helpCancellation = new CancellationTokenSource();
+
+        HelpSidebarColumn.Width = new GridLength(360);
+        HelpSidebar.Visibility = Visibility.Visible;
+        KnowledgeMatchesItemsControl.ItemsSource = null;
+        KnowledgeLoadingText.Text = "正在查询知识库...";
+        KnowledgeLoadingText.Visibility = Visibility.Visible;
+        AskAiBanner.Visibility = Visibility.Collapsed;
+        AiAnswerPanel.Visibility = Visibility.Collapsed;
+        _helpMatches = [];
+
+        try
+        {
+            var matches = await _questionHelpService.FindMatchesAsync(
+                _project,
+                currentQuestion.Question!,
+                _helpCancellation.Token);
+
+            if (questionIndex != _currentQuestionIndex)
+                return;
+
+            _helpMatches = matches;
+            KnowledgeMatchesItemsControl.ItemsSource = matches;
+            KnowledgeLoadingText.Text = matches.Count == 0
+                ? "知识库中没有找到可用的相关内容。"
+                : string.Empty;
+            KnowledgeLoadingText.Visibility = matches.Count == 0
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            AskAiBanner.Visibility = matches.Count > 0
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            KnowledgeLoadingText.Text = $"知识库查询失败：{ex.Message}";
+            KnowledgeLoadingText.Visibility = Visibility.Visible;
+        }
+    }
+
+    private async void AskAiButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_helpMatches.Count == 0)
+            return;
+
+        var questionIndex = _currentQuestionIndex;
+        var currentQuestion = _questions[questionIndex];
+        AskAiBanner.Visibility = Visibility.Collapsed;
+        AiAnswerPanel.Visibility = Visibility.Visible;
+        AiAnswerText.Text = "正在请求 DeepSeek 生成解析...";
+        AskAiButton.IsEnabled = false;
+
+        try
+        {
+            var explanation = await _questionHelpService.ExplainAsync(
+                currentQuestion.Question!,
+                currentQuestion.UserAnswer ?? string.Empty,
+                _helpMatches,
+                _helpCancellation?.Token ?? CancellationToken.None);
+
+            if (questionIndex == _currentQuestionIndex)
+                AiAnswerText.Text = string.IsNullOrWhiteSpace(explanation)
+                    ? "DeepSeek 未返回有效解析。"
+                    : explanation.Trim();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            AiAnswerText.Text = $"生成解析失败：{ex.Message}";
+        }
+        finally
+        {
+            AskAiButton.IsEnabled = true;
+        }
+    }
+
+    private void CloseHelpSidebar_Click(object sender, RoutedEventArgs e)
+    {
+        HelpSidebar.Visibility = Visibility.Collapsed;
+        HelpSidebarColumn.Width = new GridLength(0);
+    }
+
+    private void ResetHelpPanel()
+    {
+        _helpCancellation?.Cancel();
+        _helpCancellation?.Dispose();
+        _helpCancellation = null;
+        _helpMatches = [];
+        HelpSidebar.Visibility = Visibility.Collapsed;
+        HelpSidebarColumn.Width = new GridLength(0);
+        KnowledgeMatchesItemsControl.ItemsSource = null;
+        AskAiBanner.Visibility = Visibility.Collapsed;
+        AiAnswerPanel.Visibility = Visibility.Collapsed;
     }
 
     private void LocateCurrent()

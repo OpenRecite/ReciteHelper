@@ -49,6 +49,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IQuestionBankTextService, QuestionBankTextService>();
         services.AddSingleton<IKnowledgeBaseService, KnowledgeBaseService>();
         services.AddSingleton<IAiChatService, AiChatService>();
+        services.AddSingleton<IQuestionHelpService, QuestionHelpService>();
         services.AddSingleton<IStartupCompatibilityService, StartupCompatibilityService>();
         services.AddSingleton<IRecentProjectService, RecentProjectService>();
         services.AddSingleton<IFileMergeService, FileMergeService>();

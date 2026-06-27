@@ -10,6 +10,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using OpenAI.Embeddings;
 using ReciteHelper.Core.ValueObjects;
+using ReciteHelper.Core.DTOs;
 
 namespace ReciteHelper.Infrastructure.Services
 {
@@ -59,6 +60,55 @@ namespace ReciteHelper.Infrastructure.Services
             var fvs = BuildVectorStore(projectPath, elements);
 
             return fvs;
+        }
+
+        public async Task<IReadOnlyList<KnowledgeBaseMatch>> SearchAsync(
+            FileVectorStore store,
+            string query,
+            int topK,
+            CancellationToken cancellationToken = default)
+        {
+            if (store.Entries.Count == 0 || string.IsNullOrWhiteSpace(query) || topK <= 0)
+                return [];
+
+            var cfg = await configService.LoadAsync();
+            if (string.IsNullOrWhiteSpace(cfg.QwenKey))
+                throw new InvalidOperationException("知识库查询失败：未配置 Qwen Key。");
+
+            var embedClient = new OpenAIClient(
+                new ApiKeyCredential(cfg.QwenKey),
+                new OpenAIClientOptions
+                {
+                    Endpoint = new Uri("https://dashscope.aliyuncs.com/compatible-mode/v1")
+                }).GetEmbeddingClient("text-embedding-v4");
+
+            var response = await embedClient.GenerateEmbeddingsAsync(
+                [query.Trim()],
+                options: null,
+                cancellationToken);
+            var queryVector = response.Value[0].ToFloats().ToArray();
+
+            return store.Search(queryVector, topK)
+                .Select(result => new KnowledgeBaseMatch(
+                    CreateMatchTitle(result.Entry),
+                    result.Entry.Text,
+                    result.Score))
+                .ToList();
+        }
+
+        private static string CreateMatchTitle(VectorEntry entry)
+        {
+            if (!string.IsNullOrWhiteSpace(entry.Semantics.Summary))
+                return entry.Semantics.Summary;
+
+            var tags = string.Join("、", entry.Semantics.Tags.Where(x => !string.IsNullOrWhiteSpace(x)));
+            if (!string.IsNullOrWhiteSpace(tags))
+                return tags;
+
+            const int maxLength = 24;
+            return entry.Text.Length <= maxLength
+                ? entry.Text
+                : $"{entry.Text[..maxLength]}...";
         }
 
         public List<string> Slice(string text)

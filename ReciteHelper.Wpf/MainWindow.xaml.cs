@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private readonly IExamSettingsService _examSettingsService;
     private readonly IFileMergeService _fileMergeService;
     private readonly IGalGameService _galGameService;
+    private readonly IQuestionHelpService _questionHelpService;
     private List<RecentProject> recentProjects = new();
 
     public MainWindow(
@@ -39,7 +40,8 @@ public partial class MainWindow : Window
         IExamPaperService examPaperService,
         IExamSettingsService examSettingsService,
         IFileMergeService fileMergeService,
-        IGalGameService galGameService)
+        IGalGameService galGameService,
+        IQuestionHelpService questionHelpService)
     {
         _projectFileService = projectFileService;
         _projectCreationService = projectCreationService;
@@ -54,6 +56,7 @@ public partial class MainWindow : Window
         _examSettingsService = examSettingsService;
         _fileMergeService = fileMergeService;
         _galGameService = galGameService;
+        _questionHelpService = questionHelpService;
 
         _startupCompatibilityService.Initialize();
 
@@ -292,7 +295,8 @@ public partial class MainWindow : Window
                 _examAnswerService,
                 _examPaperService,
                 _examSettingsService,
-                _galGameService);
+                _galGameService,
+                _questionHelpService);
             quizWindow.Show();
 
             PopulateRecentProjectsUI();

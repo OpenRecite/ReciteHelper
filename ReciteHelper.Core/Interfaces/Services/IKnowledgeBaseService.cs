@@ -1,8 +1,15 @@
-﻿using ReciteHelper.Core.ValueObjects;
+using ReciteHelper.Core.DTOs;
+using ReciteHelper.Core.ValueObjects;
 
 namespace ReciteHelper.Core.Interfaces.Services;
 
 public interface IKnowledgeBaseService
 {
-    public Task<FileVectorStore> Build(string projectPath, string content);
+    Task<FileVectorStore> Build(string projectPath, string content);
+
+    Task<IReadOnlyList<KnowledgeBaseMatch>> SearchAsync(
+        FileVectorStore store,
+        string query,
+        int topK,
+        CancellationToken cancellationToken = default);
 }

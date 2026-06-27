@@ -5,7 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="答题窗口 - ReciteHelper"
-    Width="1000"
+    Width="1120"
     Height="700"
     Background="#F8F9FA"
     Closing="Window_Closing"
@@ -103,6 +103,36 @@
             <Setter Property="Padding" Value="16" />
         </Style>
 
+        <Style x:Key="IconButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="38" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#E0A7AD" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="ToolTip" Value="查看知识点与题目解析" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="IconBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="IconBorder" Property="Background" Value="#FFF1F2" />
+                                <Setter TargetName="IconBorder" Property="BorderBrush" Value="#C85B66" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="ChoiceOptionRadioStyle" TargetType="RadioButton">
             <Setter Property="Margin" Value="0,0,0,10" />
             <Setter Property="Padding" Value="14,12" />
@@ -148,10 +178,11 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="220" />
             <ColumnDefinition Width="*" />
+            <ColumnDefinition x:Name="HelpSidebarColumn" Width="0" />
         </Grid.ColumnDefinitions>
         <Image
             Name="PhonkImage"
-            Grid.ColumnSpan="2"
+            Grid.ColumnSpan="3"
             Width="256"
             Height="256"
             HorizontalAlignment="Center"
@@ -403,6 +434,10 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
                     <TextBlock
                         x:Name="ResultTitleText"
@@ -411,6 +446,18 @@
                         FontSize="14"
                         FontWeight="Bold"
                         Text="回答正确！" />
+
+                    <Button
+                        x:Name="QuestionHelpButton"
+                        Grid.Column="1"
+                        Grid.RowSpan="3"
+                        Margin="16,0,0,0"
+                        VerticalAlignment="Top"
+                        Click="QuestionHelpButton_Click"
+                        Style="{StaticResource IconButtonStyle}"
+                        Visibility="Collapsed">
+                        <Image Width="20" Height="20" Source="/Images/chat.png" />
+                    </Button>
 
                     <StackPanel
                         Grid.Row="1"
@@ -443,5 +490,156 @@
                 </Grid>
             </Border>
         </Grid>
+
+        <Border
+            x:Name="HelpSidebar"
+            Grid.Column="2"
+            Background="White"
+            BorderBrush="#E1E5EA"
+            BorderThickness="1,0,0,0"
+            Visibility="Collapsed">
+            <Grid Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock
+                            FontSize="17"
+                            FontWeight="SemiBold"
+                            Foreground="#20242A"
+                            Text="答题助手" />
+                        <TextBlock
+                            Margin="0,4,0,0"
+                            FontSize="12"
+                            Foreground="#6B7280"
+                            Text="基于当前项目知识库" />
+                    </StackPanel>
+                    <Button
+                        Grid.Column="1"
+                        Width="32"
+                        Height="32"
+                        Padding="0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Click="CloseHelpSidebar_Click"
+                        Content="×"
+                        Cursor="Hand"
+                        FontSize="22"
+                        Foreground="#6B7280"
+                        ToolTip="关闭" />
+                </Grid>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Foreground="#4B5563"
+                            Text="已匹配知识点" />
+
+                        <TextBlock
+                            x:Name="KnowledgeLoadingText"
+                            Margin="0,16,0,0"
+                            Foreground="#6B7280"
+                            Text="正在查询知识库..."
+                            TextWrapping="Wrap" />
+
+                        <ItemsControl x:Name="KnowledgeMatchesItemsControl" Margin="0,10,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border
+                                        Margin="0,0,0,10"
+                                        Padding="12"
+                                        Background="#F7F9FB"
+                                        BorderBrush="#E3E7EC"
+                                        BorderThickness="1"
+                                        CornerRadius="4">
+                                        <StackPanel>
+                                            <TextBlock
+                                                FontSize="13"
+                                                FontWeight="SemiBold"
+                                                Foreground="#26313D"
+                                                Text="{Binding Title, StringFormat=已匹配知识点：{0}}"
+                                                TextWrapping="Wrap" />
+                                            <TextBlock
+                                                Margin="0,7,0,0"
+                                                FontSize="12"
+                                                Foreground="#59636E"
+                                                LineHeight="19"
+                                                MaxHeight="96"
+                                                Text="{Binding Content}"
+                                                TextTrimming="CharacterEllipsis"
+                                                TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Border
+                            x:Name="AskAiBanner"
+                            Margin="0,10,0,0"
+                            Padding="14"
+                            Background="#EEF6FF"
+                            BorderBrush="#C8DFF7"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    Foreground="#174A7C"
+                                    Text="需要进一步解析吗？" />
+                                <TextBlock
+                                    Margin="0,6,0,12"
+                                    FontSize="12"
+                                    Foreground="#4D6780"
+                                    Text="将当前问题与以上知识点发送给 DeepSeek。"
+                                    TextWrapping="Wrap" />
+                                <Button
+                                    x:Name="AskAiButton"
+                                    HorizontalAlignment="Left"
+                                    Click="AskAiButton_Click"
+                                    Content="询问 AI"
+                                    Style="{StaticResource PrimaryButtonStyle}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border
+                            x:Name="AiAnswerPanel"
+                            Margin="0,14,0,0"
+                            Padding="14"
+                            Background="#F7F9FB"
+                            BorderBrush="#E3E7EC"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    Foreground="#26313D"
+                                    Text="AI 题目解析" />
+                                <TextBlock
+                                    x:Name="AiAnswerText"
+                                    Margin="0,10,0,0"
+                                    FontSize="13"
+                                    Foreground="#3E4852"
+                                    LineHeight="21"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

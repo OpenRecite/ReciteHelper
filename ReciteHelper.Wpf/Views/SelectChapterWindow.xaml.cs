@@ -20,6 +20,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
     private readonly IExamPaperService _examPaperService;
     private readonly IExamSettingsService _examSettingsService;
     private readonly IGalGameService _galGameService;
+    private readonly IQuestionHelpService _questionHelpService;
     private Project? _currentProject;
     private DispatcherTimer _clockTimer;
     private List<ChapterViewModel> _chapters;
@@ -32,7 +33,8 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
         IExamAnswerService examAnswerService,
         IExamPaperService examPaperService,
         IExamSettingsService examSettingsService,
-        IGalGameService galGameService)
+        IGalGameService galGameService,
+        IQuestionHelpService questionHelpService)
     {
         _projectFileService = projectFileService;
         _quizService = quizService;
@@ -41,6 +43,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
         _examPaperService = examPaperService;
         _examSettingsService = examSettingsService;
         _galGameService = galGameService;
+        _questionHelpService = questionHelpService;
 
         InitializeComponent();
         _currentProject = project;
@@ -132,7 +135,12 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
             return;
         }
 
-        var quizWindow = new QuizWindow(_currentProject, chapter.Name!, _quizService, _projectFileService)
+        var quizWindow = new QuizWindow(
+            _currentProject,
+            chapter.Name!,
+            _quizService,
+            _projectFileService,
+            _questionHelpService)
         {
             Title = $"{_currentProject.ProjectName} - {chapter.Name}",
             Owner = this
@@ -234,7 +242,12 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
     {
         var questionList = _reviewGenerator.GenerateReview(_currentProject, 30);
 
-        var quizWindow = new QuizWindow(_currentProject, questionList, _quizService, _projectFileService)
+        var quizWindow = new QuizWindow(
+            _currentProject,
+            questionList,
+            _quizService,
+            _projectFileService,
+            _questionHelpService)
         { Owner = System.Windows.Application.Current.MainWindow };
         quizWindow.Show();
         Close();

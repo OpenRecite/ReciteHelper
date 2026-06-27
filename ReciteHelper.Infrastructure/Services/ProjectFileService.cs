@@ -28,7 +28,16 @@ public sealed class ProjectFileService : IProjectFileService
         {
             var knowledgeBasePath = ResolveProjectRelativePath(projectPath, project.KnowledgeBasePath);
             if (File.Exists(knowledgeBasePath))
-                project.LoadKnowledgeBase(new FileVectorStore(knowledgeBasePath));
+            {
+                try
+                {
+                    project.LoadKnowledgeBase(new FileVectorStore(knowledgeBasePath));
+                }
+                catch (JsonException ex)
+                {
+                    project.MarkKnowledgeBaseBuildFailed($"知识库文件无法读取：{ex.Message}");
+                }
+            }
         }
 
         return project;

@@ -48,8 +48,14 @@ public class FileVectorStore
 
     private void Load()
     {
-        if (File.Exists(_filePath))
-            _entries = JsonSerializer.Deserialize<List<VectorEntry>>(File.ReadAllText(_filePath)) ?? [];
+        if (!File.Exists(_filePath))
+            return;
+
+        var json = File.ReadAllText(_filePath);
+        if (string.IsNullOrWhiteSpace(json))
+            return;
+
+        _entries = JsonSerializer.Deserialize<List<VectorEntry>>(json) ?? [];
     }
 
     private static float CosineSimilarity(float[] a, float[] b)
