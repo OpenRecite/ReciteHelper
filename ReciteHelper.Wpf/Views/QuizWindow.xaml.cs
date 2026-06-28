@@ -10,8 +10,10 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
@@ -33,6 +35,20 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     private string? _selectedChoiceId;
     private IReadOnlyList<KnowledgeBaseMatch> _helpMatches = [];
     private CancellationTokenSource? _helpCancellation;
+    private static readonly Brush HighlightBackground = new SolidColorBrush(Color.FromRgb(205, 250, 224));
+
+    private sealed record HighlightedKnowledgeMatch(
+        string Title,
+        IReadOnlyList<HighlightedTextSegment> ContentSegments);
+
+    private sealed record HighlightedTextSegment(string Text, bool IsHighlighted);
+
+    private readonly record struct NormalizedChar(char Value, int OriginalIndex);
+
+    private readonly record struct HighlightSpan(int Start, int End)
+    {
+        public int Length => End - Start;
+    }
 
     public QuizWindow(
         Project project,
@@ -297,7 +313,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
                 return;
 
             _helpMatches = matches;
-            KnowledgeMatchesItemsControl.ItemsSource = matches;
+            KnowledgeMatchesItemsControl.ItemsSource = BuildHighlightedMatches(matches, currentQuestion);
             KnowledgeLoadingText.Text = matches.Count == 0
                 ? "知识库中没有找到可用的相关内容。"
                 : string.Empty;
@@ -360,6 +376,182 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     {
         HelpSidebar.Visibility = Visibility.Collapsed;
         HelpSidebarColumn.Width = new GridLength(0);
+    }
+
+    private void KnowledgeContentText_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TextBlock textBlock)
+            return;
+
+        textBlock.Inlines.Clear();
+
+        if (textBlock.Tag is not IReadOnlyList<HighlightedTextSegment> segments)
+            return;
+
+        foreach (var segment in segments)
+        {
+            var run = new Run(segment.Text);
+            if (segment.IsHighlighted)
+            {
+                run.Background = HighlightBackground;
+                run.Foreground = new SolidColorBrush(Color.FromRgb(22, 101, 52));
+                run.FontWeight = FontWeights.SemiBold;
+            }
+
+            textBlock.Inlines.Add(run);
+        }
+    }
+
+    private static IReadOnlyList<HighlightedKnowledgeMatch> BuildHighlightedMatches(
+        IReadOnlyList<KnowledgeBaseMatch> matches,
+        QuestionItem currentQuestion)
+    {
+        return matches
+            .Select(match => new HighlightedKnowledgeMatch(
+                match.Title,
+                CreateHighlightSegments(match.Content, currentQuestion)))
+            .ToList();
+    }
+
+    private static IReadOnlyList<HighlightedTextSegment> CreateHighlightSegments(
+        string content,
+        QuestionItem currentQuestion)
+    {
+        if (string.IsNullOrEmpty(content))
+            return [new HighlightedTextSegment(string.Empty, false)];
+
+        var sourceText = BuildHighlightSourceText(currentQuestion);
+        var spans = FindHighlyOverlappingSpans(content, sourceText);
+        if (spans.Count == 0)
+            return [new HighlightedTextSegment(content, false)];
+
+        var segments = new List<HighlightedTextSegment>();
+        var cursor = 0;
+        foreach (var span in spans)
+        {
+            if (span.Start > cursor)
+                segments.Add(new HighlightedTextSegment(content[cursor..span.Start], false));
+
+            segments.Add(new HighlightedTextSegment(content[span.Start..span.End], true));
+            cursor = span.End;
+        }
+
+        if (cursor < content.Length)
+            segments.Add(new HighlightedTextSegment(content[cursor..], false));
+
+        return segments;
+    }
+
+    private static string BuildHighlightSourceText(QuestionItem currentQuestion)
+    {
+        var question = currentQuestion.Question!;
+        var builder = new StringBuilder();
+        builder.AppendLine(question.Text);
+        builder.AppendLine(currentQuestion.UserAnswer);
+        builder.AppendLine(question.GetCorrectAnswerText());
+
+        foreach (var option in question.Options)
+            builder.AppendLine(option.DisplayText);
+
+        return builder.ToString();
+    }
+
+    private static IReadOnlyList<HighlightSpan> FindHighlyOverlappingSpans(
+        string content,
+        string sourceText)
+    {
+        const int minMatchLength = 5;
+
+        var contentChars = NormalizeForComparison(content);
+        var sourceChars = NormalizeForComparison(sourceText);
+        if (contentChars.Count < minMatchLength || sourceChars.Count < minMatchLength)
+            return [];
+
+        var candidates = new List<HighlightSpan>();
+        var previous = new int[sourceChars.Count];
+        var current = new int[sourceChars.Count];
+
+        for (var i = 0; i < contentChars.Count; i++)
+        {
+            Array.Clear(current);
+
+            for (var j = 0; j < sourceChars.Count; j++)
+            {
+                if (contentChars[i].Value != sourceChars[j].Value)
+                    continue;
+
+                current[j] = i == 0 || j == 0 ? 1 : previous[j - 1] + 1;
+                if (current[j] < minMatchLength)
+                    continue;
+
+                var isMatchEnding =
+                    i == contentChars.Count - 1 ||
+                    j == sourceChars.Count - 1 ||
+                    contentChars[i + 1].Value != sourceChars[j + 1].Value;
+
+                if (!isMatchEnding)
+                    continue;
+
+                var startIndex = i - current[j] + 1;
+                var endIndex = i;
+                candidates.Add(new HighlightSpan(
+                    contentChars[startIndex].OriginalIndex,
+                    contentChars[endIndex].OriginalIndex + 1));
+            }
+
+            (previous, current) = (current, previous);
+        }
+
+        return SelectNonOverlappingSpans(candidates);
+    }
+
+    private static List<NormalizedChar> NormalizeForComparison(string text)
+    {
+        var result = new List<NormalizedChar>(text.Length);
+        for (var i = 0; i < text.Length; i++)
+        {
+            var value = text[i];
+            if (!char.IsLetterOrDigit(value))
+                continue;
+
+            result.Add(new NormalizedChar(char.ToLowerInvariant(value), i));
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<HighlightSpan> SelectNonOverlappingSpans(List<HighlightSpan> candidates)
+    {
+        if (candidates.Count == 0)
+            return [];
+
+        var selected = new List<HighlightSpan>();
+        foreach (var candidate in candidates
+                     .OrderByDescending(span => span.Length)
+                     .ThenBy(span => span.Start))
+        {
+            if (selected.Any(span => candidate.Start < span.End && span.Start < candidate.End))
+                continue;
+
+            selected.Add(candidate);
+        }
+
+        selected.Sort((left, right) => left.Start.CompareTo(right.Start));
+
+        var merged = new List<HighlightSpan>();
+        foreach (var span in selected)
+        {
+            if (merged.Count == 0 || span.Start > merged[^1].End)
+            {
+                merged.Add(span);
+                continue;
+            }
+
+            var last = merged[^1];
+            merged[^1] = new HighlightSpan(last.Start, Math.Max(last.End, span.End));
+        }
+
+        return merged;
     }
 
     private void ResetHelpPanel()

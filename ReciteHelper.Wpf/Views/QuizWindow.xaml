@@ -574,7 +574,8 @@
                                                 Foreground="#59636E"
                                                 LineHeight="19"
                                                 MaxHeight="96"
-                                                Text="{Binding Content}"
+                                                Loaded="KnowledgeContentText_Loaded"
+                                                Tag="{Binding ContentSegments}"
                                                 TextTrimming="CharacterEllipsis"
                                                 TextWrapping="Wrap" />
                                         </StackPanel>
