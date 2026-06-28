@@ -1,0 +1,82 @@
+<UserControl
+    x:Class="ReciteHelper.Wpf.Controls.ExamPaper.ChoiceQuestionControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="PaperChoiceStyle" TargetType="Button">
+            <Setter Property="Margin" Value="2,3" />
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="#151515" />
+            <Setter Property="FontFamily" Value="Times New Roman,SimSun" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="Background" Value="#FFF0F1" />
+                    <Setter Property="BorderBrush" Value="#B42332" />
+                    <Setter Property="Foreground" Value="#A31625" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </DataTrigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#B42332" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.82" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+    <StackPanel Margin="0,3,0,8">
+        <TextBlock
+            FontFamily="Times New Roman,SimSun"
+            FontSize="16"
+            LineHeight="24"
+            TextWrapping="Wrap">
+            <Run x:Name="NumberRun" FontWeight="Normal" />
+            <Run x:Name="QuestionRun" />
+        </TextBlock>
+        <ItemsControl x:Name="OptionsItemsControl" Margin="18,4,0,0">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Columns="2" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Button
+                        Click="OptionButton_Click"
+                        FontSize="{Binding FontSize, Mode=OneWay}"
+                        Style="{StaticResource PaperChoiceStyle}"
+                        Tag="{Binding Id, Mode=OneWay}">
+                        <TextBlock LineHeight="24" TextWrapping="Wrap">
+                            <Run FontWeight="Bold" Text="{Binding Id, Mode=OneWay}" />
+                            <Run Text=". " />
+                            <Run Text="{Binding Text, Mode=OneWay}" />
+                        </TextBlock>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

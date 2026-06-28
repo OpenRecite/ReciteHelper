@@ -1,126 +1,257 @@
 # ReciteHelper User Manual
 
-**Version:** v3-preview
+**Version:** v4
 
-**Last Updated:** 2025.12.30
+**Last Updated:** 2026-06-28
 
 ## Introduction
-ReciteHelper is an AI-powered tool designed to help users efficiently memorize and review knowledge content. By providing various study and review methods, this project assists users in managing, reinforcing, and testing their study material. It is especially suitable for exam preparation, memorization, and knowledge point organization. The project supports multiple types of data input and output and can be flexibly customized according to users' needs.
+
+ReciteHelper is an AI-assisted desktop application for exam preparation, course study, and knowledge organization. It turns study material into a `.rhproj` project containing chapters, knowledge points, single-choice questions, short-answer questions, and a local knowledge base. Each project can then be used for chapter practice, smart review, mock exams, and help with incorrect answers.
+
+Question data, learning records, and the knowledge base are organized inside the project directory. The knowledge base uses file storage, so no database or standalone vector service needs to be deployed.
+
+Features marked as "Preview" may still change substantially.
 
 ---
 
-## Before Use
+## Before You Start
 
-Before using the software, you should complete the configuration. Open the Config.xml file in the file directory using Notepad or another text editor. You will see the following content:
+### Configure API Keys
+
+Open `Config.xml` in the application directory. The recommended configuration structure is:
 
 ```xml
 <Config>
-<Version>2</Version>
-<DeepSeekKey>%Environment.GetEnvironmentVariable("DSAPI")%</DeepSeekKey>
-<MissingStrategy>Ignore</MissingStrategy>
-<OCRAccess></OCRAccess>
-<OCRSecret></OCRSecret>
+    <Version>2</Version>
+
+    <DeepSeekKey>%Environment.GetEnvironmentVariable("DSAPI")%</DeepSeekKey>
+    <QwenKey>%Environment.GetEnvironmentVariable("QWEN_API_KEY")%</QwenKey>
+    <MissingStrategy>Ignore</MissingStrategy>
+
+    <OCRAccess></OCRAccess>
+    <OCRSecret></OCRSecret>
+
+    <PhonkOptions>
+        <EnablePhonk>false</EnablePhonk>
+        <WrongCount>3</WrongCount>
+    </PhonkOptions>
+
+    <RStandard>45</RStandard>
 </Config>
 ```
 
-The required configuration item is `DeepSeekKey`. After obtaining the Key from the official website's developer platform (format: `sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`), directly replace the `%` symbols and all the characters within them with this Key.
+- `DeepSeekKey`: required for knowledge extraction, question generation, and chapter organization during project creation. It is also used for optional AI explanations.
+- `QwenKey`: used to generate embeddings and search the project knowledge base. If it is missing or a request fails, generated chapters and questions remain available, but knowledge-base assistance will not be shown.
+- `MissingStrategy`: controls recovery when generated knowledge is missing. `Ignore` favors speed; `Replay` retries missing content at the cost of more time and API usage.
+- `RStandard`: the similarity threshold used when evaluating short answers. It normally does not need to be changed.
+- `PhonkOptions`: Easter egg settings. When `EnablePhonk` is enabled, a special effect is triggered after `WrongCount` consecutive incorrect answers.
 
-Of course, if you are concerned about security issues, you can configure the Key in your environment variables, and then change `DSAPI` in `%Environment.GetEnvironmentVariable("DSAPI")%` to the name of your configured environment variable.
+Keys may be written directly into their elements, but environment variables are recommended so credentials are not stored as plain text. For example:
 
-The `MissingStrategy` configuration item indicates the behavior if some knowledge points are discarded due to AI hallucinations. The default is `Ignore`. `Ignore` means no action is taken after discarding, which may result in less than 10% loss of knowledge points, but the speed is relatively faster; `Replay` means that the discarded knowledge points are extracted and replayed, ensuring that all content is retained, but this may take more time.
+```xml
+<DeepSeekKey>%Environment.GetEnvironmentVariable("DEEPSEEK_API_KEY")%</DeepSeekKey>
+<QwenKey>%Environment.GetEnvironmentVariable("QWEN_API_KEY")%</QwenKey>
+```
 
----
-
-## Features
-
-### Create Project
-
-The software organizes review projects by "Subject." You should create a new review project for each different subject.
-
-On the main interface, click on "Create New Project" to start a subject review project. You should prepare a PDF file with the review material for the subject. This PDF should contain selectable text, not images. Support for image-based files (OCR or multimodal methods) will be added in future releases.
-
-![01](Resources/01-create-project-main.png)
-
-Afterward, fill in the course name, project save path, and review material path, and click "Confirm Create." The software will automatically extract the text from the document and perform intelligent analysis and clustering. This process may take some time, so please wait patiently until a prompt appears. Then, select "Load from Existing Project" and choose the path to the newly created project. The project will then appear in the recent projects list and can be opened directly.
-
-### Knowledge Point Learning
-
-After opening the project, a chapter selection window will pop up, displaying all chapters divided from the review materials.
-
-![02](Resources/02-choose-chapter.png)
-
-Click the "Learn Knowledge Points" button at the top right to open the knowledge point learning page. This page lists each cluster-generated chapter and all knowledge points within it. Clicking a chapter name on the left will expand the knowledge point list. Click on a specific knowledge point to view its content. Once you have mastered a knowledge point, you can click "Mark as Mastered" at the top right, and its status will update to "Mastered" with a checkmark. If you forget a knowledge point during review, you can uncheck the mark to set it as "Not Mastered." There may be a flash when switching knowledge points due to text rendering, which is normal.
-
-To better support review, future versions will offer knowledge point revision recommendation and mastery detection based on the Ebbinghaus forgetting curve.
-
-![03](Resources/03-knowledge-point.png)
-
-### Practice Questions
-
-After learning some knowledge points, you can select chapters to practice questions from the chapter selection interface, which opens the question practice page for that chapter.
-
-![04](Resources/04-question-exercise.png)
-
-Currently, fill-in-the-blank questions are supported, with plans to add multiple-choice, explanation, and short-answer questions. Enter your answer in the answer box and click "Submit Answer." The software will determine if the answer is correct and record your progress. Unlike common applications that mark answers wrong for minor differences, our software accepts similar or fuzzy answers using methods such as LCS, correlation coefficient, TF-IDF, cosine similarity, etc. For example, in the figure, the correct answer is "pixel," and "pixel point" is accepted and judged as correct since their meanings are close. Your answer progress is saved, and you can continue answering after exiting the software. Answer data will also be used to calculate mastery and displayed on the chapter selection for reference.
-
-### Mock Exam
-
-To simulate the exam environment, the software includes a simulated exam function. In the current version, the simulated exam will automatically randomly select 30 questions from various test points, with a time limit of 60 minutes. Subsequent versions will support custom question types, two-way item analysis question generation, etc. Click on the "Simulated Exam" page in the upper right corner of the chapter selection to enter the simulated exam, which will then open the exam configuration interface.
-
-![08](Resources/08-exam-setting.png)
-
-On this page, you can configure relevant exam settings, such as course number, exam time, number of questions, points per question, etc. You can use the sliders on the right to select questions from knowledge points proportionally. The total weight does not need to be 100%; the software will automatically calculate the weight ratio for question selection.
-
-![05](Resources/05-simulate-capital.png)
-
-After selecting "I have read and agree to the above exam rules," you can start the exam. After completing the questions, click the submit button in the upper right corner to view your score and incorrect answers.
-
-![06](Resources/06-simulate-result.png)
-
-Clicking the "View Answers" button will open the exam answer review window, where you can view your answers to each question, the correct answers, and explanations. You can also choose to take the exam again to test your understanding of the knowledge covered in this exam.
-
-![07](Resources/07-simulate-review.png)
+Never commit API keys to Git or share them with other people.
 
 ---
 
-## Frequently Asked Questions (FAQ)
+## Classic Review Projects
 
-**Q: No chapters appear after creating a project. What should I do?**  
-A: Please check if the uploaded PDF contains selectable text. Image-only PDFs are not supported in the current version. Use text-based PDF documents.
+The classic review project is the primary ReciteHelper project type and provides the data used by smart review, mock exams, and game projects.
 
-**Q: How can I review knowledge points marked as mastered?**  
-A: On the knowledge point learning page, you can filter to show "All," "Mastered," or "Not Mastered" knowledge points and freely select what to review.
+On the main screen, select "Create New Project," then choose "Classic Review Project."
 
-**Q: How do I export my learning progress?**  
-A: In "Project Settings," you can export learning data in JSON format for progress management and data analysis.
+![Choose a project type](Resources/09-choose-classic.png)
+
+### Prepare Study Material
+
+The project creation window accepts:
+
+- Text-based PDF files whose text can be selected and copied.
+- ReciteHelper merge files with the `.meg` extension.
+
+Image-only and scanned PDFs cannot currently be read directly. For multiple documents or DOCX, PPTX, and TXT sources, use the File Merge tool first to produce a `.meg` file. The merge tool supports DOCX, PPTX, PDF, TXT, and existing `.meg` files.
+
+![Create a classic review project](Resources/01-create-project-main.png)
+
+### Create a Project
+
+Enter a project name, storage directory, and study-material path, then select "Confirm Create." The progress window reports four stages in real time:
+
+1. **Read Text**: reads content from the PDF or `.meg` file.
+2. **Extract Knowledge**: sends text chunks to the AI to generate knowledge points, single-choice questions, and short-answer questions.
+3. **Cluster Text**: merges related topics and organizes chapters and question structures.
+4. **Generate Vectors**: builds the project-level file knowledge base used for later retrieval.
+
+Creation can take some time depending on material length, network conditions, and API response speed. Keep the network connection available and do not click the create button repeatedly.
+
+A completed project directory normally contains:
+
+- `<project-name>.rhproj`: chapters, questions, progress, and a reference to the knowledge-base file.
+- A knowledge-base file loaded together with the project for vector retrieval.
+
+Keep the entire project directory together. Moving only the `.rhproj` file without its knowledge-base file disables knowledge-base features.
+
+### Load a Project
+
+Open a project from the recent-project list, or choose "Load Existing Project" and select a `.rhproj` file. Chapters, questions, learning records, and the knowledge base are loaded together. Older `.rhproj` projects without a knowledge base can still be used for normal practice.
+
+---
+
+## Learning Knowledge Points
+
+Opening a project displays the chapter selection window, including chapter counts, question counts, and mastery for each chapter.
+
+![Chapter selection](Resources/02-choose-chapter.png)
+
+Select "Learn Knowledge Points" to browse clustered chapters and knowledge points. Choose a chapter on the left and then a knowledge point to read its content. Use "Mark as Mastered" to update its status, or clear the check to mark it as not mastered again.
+
+![Knowledge point learning](Resources/03-knowledge-point.png)
+
+---
+
+## Question Practice
+
+Select a chapter containing questions from the chapter selection window to start practicing.
+
+![Question practice](Resources/04-question-exercise.png)
+
+Two question types are currently supported:
+
+- **Single-choice questions**: select an answer from options A, B, C, and D, then submit it.
+- **Short-answer questions**: enter an answer and submit it. Evaluation uses text similarity and does not require an exact character-for-character match with the reference answer.
+
+After submission, the result area shows the judgment, the user's answer, and the correct answer. Results are saved in the project and are used to calculate chapter mastery and schedule smart reviews.
+
+### Incorrect-Answer Assistant and Knowledge Base
+
+When an answer is incorrect and the current project has a usable knowledge base, an assistant button appears in the result area. Selecting it opens a side panel that:
+
+1. Searches the knowledge base for the three points most relevant to the question and correct answer.
+2. Displays each matched point and its source content.
+3. Highlights in green the content that strongly overlaps the question, user answer, or correct answer.
+4. Lets you decide whether to ask the AI for more help. Data is sent only after confirmation.
+5. Sends the question, user answer, correct answer, and matched knowledge points to DeepSeek, which explains the mistake and the correct reasoning.
+
+The button is hidden when no knowledge base was built or its file is empty or unavailable. Normal practice remains available.
+
+---
+
+## Smart Review
+
+Choose "Smart Review" from the function menu in the chapter selection window. ReciteHelper uses answer history to select the 30 questions currently most useful to review.
+
+The review schedule uses parameters inspired by SuperMemo and adjusted from personal answer records. More practice provides more evidence for estimating review priority; recommendations in a new project are therefore less personalized.
+
+---
+
+## Mock Exams
+
+Select "Mock Exam" in the chapter selection window to open the exam settings page.
+
+![Exam settings](Resources/08-exam-setting.png)
+
+You can configure the course number, duration, question count, points per question, and selection weight for each chapter. Weights do not need to total 100%; ReciteHelper normalizes them automatically.
+
+Accept the exam rules to begin. Submit the paper after answering to see the score and response statistics.
+
+![Mock exam](Resources/05-simulate-capital.png)
+
+![Exam result](Resources/06-simulate-result.png)
+
+Select "View Answers" to review each response, the correct answer, and any available explanation. The exam report can also be exported as a text file.
+
+![Exam review](Resources/07-simulate-review.png)
+
+---
+
+## Import and Export
+
+Open the function menu in the chapter selection window and select Export. ReciteHelper creates `rh_output.zip` inside the project directory. The archive includes the project file, its manifest, and the knowledge-base file when available, making it suitable for backup or sharing.
+
+Answer statuses are cleared only in the exported copy. The active local project is not changed. A recipient can open the archive with the Import function on the main screen.
+
+---
+
+## Game Projects (Preview)
+
+A game project uses a classic review project as its data source. Select an existing `.rhproj` file, and ReciteHelper will ask the AI to generate the chapters, story, and script used by the visual novel.
+
+![Create a game project](Resources/10-create-galgame.png)
+
+After generation, open the original classic review project and select "Run Game" from the function menu in the chapter selection window.
+
+![Run the game](Resources/11-play-galgame.png)
+
+This feature remains in preview. Generation time and output quality depend on the source material and model responses.
+
+---
+
+## Frequently Asked Questions
+
+**Q: Why are there no chapters or questions after project creation?**
+
+A: Confirm that the PDF contains selectable text, then check the DeepSeek key and network connection. Run OCR on scanned PDFs before importing them as readable text material.
+
+**Q: Practice works, but why is there no knowledge-base button?**
+
+A: The button appears only after an incorrect answer and only when the project's knowledge base is usable. Confirm that a Qwen key was configured during project creation and that the knowledge-base file has not been moved, deleted, or emptied.
+
+**Q: Why does knowledge-base search still require an internet connection?**
+
+A: Knowledge-base data is stored in a local file and requires no database deployment. The query must still be converted into an embedding by Qwen, so an internet connection and valid Qwen key are required.
+
+**Q: Can I import multiple documents or non-PDF material?**
+
+A: Yes. Use the File Merge tool to combine DOCX, PPTX, PDF, TXT, or other `.meg` files, then create a project from the generated `.meg` file.
+
+**Q: Does exporting clear my current learning progress?**
+
+A: No. Question statuses are cleared only from the copy inside the export archive. The original project remains unchanged.
+
+**Q: Can older projects still be opened?**
+
+A: Yes. Question types use backward-compatible deserialization. Older projects without a knowledge base can still be studied and practiced, but they do not provide knowledge-base retrieval.
 
 ---
 
 ## Changelog
 
-### v3-preview (2025.12.29)
-- Added custom exam functionality
-- Added support for long PDFs using a replay algorithm
+### v4 (2026-06-28)
 
-(v3 is still under development)
+- Added independent generation, loading, and interaction for single-choice and short-answer questions.
+- Added a file-based knowledge base that is built, loaded, imported, and exported with each project.
+- Added incorrect-answer retrieval, matched-content highlighting, and optional AI explanations.
+- Added a four-stage project creation progress window.
+- Added personalized smart review and preset exam features.
+- Refactored the application into SharedKernel, Core, Application, Infrastructure, and WPF layers.
 
-### v2 (2025.11.15)
-- Added review answer feature for mock exams
-- Added knowledge point learning function
-- Added documentation and specifications
+### v3 (2026-01-14)
 
+- Added custom exam settings.
+- Added a replay strategy for long PDF documents.
+- Added multi-file merge projects.
+- Integrated AquaAvgFramework for game project generation (Preview).
 
-### v1 (2025.11.11)
-- Support PDF import and automatic knowledge clustering
-- Added mock exam function
-- Improved clustering and chapter recognition algorithms
-- Supported fuzzy answer matching
+### v2 (2025-11-25)
+
+- Added exam answer review.
+- Added knowledge point learning.
+- Improved project export and documentation.
+
+### v1 (2025-11-11)
+
+- Added PDF import and automatic knowledge clustering.
+- Added mock exams.
+- Added similar-answer evaluation.
 
 ---
 
-## Contact Us & Feedback
+## Contact and Feedback
 
-- Project Homepage: [GitHub Repo](https://github.com/ArabidopsisDev/ReciteHelper)
-- Feedback Email: arab@methodbox.top
-- User Community Group: 1053379975
-- Feel free to open an issue or send an email with suggestions or questions. The development team will respond promptly.
+- Project homepage: [GitHub repository](https://github.com/ArabidopsisDev/ReciteHelper)
+- Feedback email: arab@methodbox.top
+- User community group: 1053379975
+- Open an issue or send an email with suggestions, feature requests, or bug reports.

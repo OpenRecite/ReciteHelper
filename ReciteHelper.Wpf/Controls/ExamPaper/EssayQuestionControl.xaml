@@ -1,0 +1,35 @@
+<UserControl
+    x:Class="ReciteHelper.Wpf.Controls.ExamPaper.EssayQuestionControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="0,4,0,11">
+        <TextBlock
+            FontFamily="Times New Roman,SimSun"
+            FontSize="16"
+            LineHeight="24"
+            TextWrapping="Wrap">
+            <Run x:Name="NumberRun" FontWeight="Normal" />
+            <Run x:Name="ScoreRun" FontWeight="Bold" />
+            <Run x:Name="QuestionRun" />
+        </TextBlock>
+        <Border
+            Margin="18,7,0,0"
+            Background="#FFFEFB"
+            BorderBrush="#AFAFAF"
+            BorderThickness="0,0,0,1">
+            <TextBox
+                x:Name="AnswerTextBox"
+                MinHeight="112"
+                Padding="4,3"
+                AcceptsReturn="True"
+                Background="Transparent"
+                BorderThickness="0"
+                FontFamily="Times New Roman,SimSun"
+                FontSize="16"
+                Foreground="#9F1826"
+                TextChanged="AnswerTextBox_TextChanged"
+                TextWrapping="Wrap"
+                VerticalScrollBarVisibility="Auto" />
+        </Border>
+    </StackPanel>
+</UserControl>

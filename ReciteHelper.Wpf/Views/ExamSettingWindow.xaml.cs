@@ -74,8 +74,6 @@ namespace ReciteHelper.Wpf.Views {
 
         private void UpdatePreview()
         {
-            return;
-
             if (int.TryParse(ExamTimeTextBox?.Text, out int examTime))
             {
                 TotalTimePreview?.Content = $"考试时间：{examTime}分钟";
@@ -88,14 +86,20 @@ namespace ReciteHelper.Wpf.Views {
 
             if (int.TryParse(ScorePerQuestionTextBox?.Text, out int scorePerQuestion))
             {
-                ScorePerQuestionPreview?.Content = $"每题分值：{scorePerQuestion}分";
+                ScorePerQuestionPreview?.Content = $"解答题：每题{scorePerQuestion}分";
 
                 if (int.TryParse(QuestionCountTextBox?.Text, out int totalQuestions))
                 {
-                    int totalScore = scorePerQuestion * totalQuestions;
-                    TotalScorePreview?.Content = $"试卷总分：{totalScore}分";
+                    var choiceCount = (int)Math.Round(totalQuestions * 0.30d, MidpointRounding.AwayFromZero);
+                    var totalScore = choiceCount * 3 + (totalQuestions - choiceCount) * scorePerQuestion;
+                    TotalScorePreview?.Content = $"预计满分：{totalScore}分";
                 }
             }
+        }
+
+        private void ScorePerQuestionTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            UpdatePreview();
         }
 
         private void UpdateTotalWeight()
@@ -265,7 +269,11 @@ namespace ReciteHelper.Wpf.Views {
                 return;
             }
 
-            var examWindow = new ExamWindow(examQuestions, _project.ProjectName!, _examAnswerService);
+            var examWindow = new ExamWindow(
+                examQuestions,
+                _project.ProjectName!,
+                examSettings,
+                _examAnswerService);
             examWindow.Show();
 
             Close();
@@ -300,7 +308,7 @@ namespace ReciteHelper.Wpf.Views {
             // Verify the score for each question
             if (!int.TryParse(ScorePerQuestionTextBox.Text, out int scorePerQuestion) || scorePerQuestion <= 0)
             {
-                MessageBox.Show("每题分数必须为正整数", "输入错误",
+                MessageBox.Show("解答题每题分数必须为正整数", "输入错误",
                     MessageBoxButton.OK, MessageBoxImage.Error);
                 ScorePerQuestionTextBox.Focus();
                 return false;

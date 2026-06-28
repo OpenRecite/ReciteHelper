@@ -7,77 +7,97 @@ namespace ReciteHelper.Application.Services;
 
 public sealed class ExamPaperService : IExamPaperService
 {
+    private const double ChoiceQuestionRatio = 0.30d;
+
     public List<Question> Generate(Project project, ExamSettings settings)
     {
-        var allQuestions = project.Chapters?
-            .Where(chapter => chapter.Questions is not null)
-            .SelectMany(chapter => chapter.Questions!)
-            .Select(CloneQuestion)
+        var candidates = project.Chapters?
+            .Where(chapter => chapter.Questions is { Count: > 0 })
+            .SelectMany(chapter => chapter.Questions!.Select(question => new QuestionCandidate(
+                question,
+                chapter.Name ?? string.Empty,
+                GetChapterWeight(settings, chapter.Name))))
             .ToList() ?? [];
 
-        if (allQuestions.Count < settings.QuestionCount)
+        if (candidates.Count < settings.QuestionCount)
             return [];
 
-        if (settings.ChapterWeights is null || settings.ChapterWeights.All(weight => weight.Value == 0))
-            return GetRandomQuestions(allQuestions, settings.QuestionCount);
+        var choices = candidates.Where(candidate => candidate.Question.IsSingleChoice).ToList();
+        var shortAnswers = candidates.Where(candidate => !candidate.Question.IsSingleChoice).ToList();
+        var targetChoiceCount = Math.Min(
+            choices.Count,
+            (int)Math.Round(settings.QuestionCount * ChoiceQuestionRatio, MidpointRounding.AwayFromZero));
+        var targetShortAnswerCount = Math.Min(shortAnswers.Count, settings.QuestionCount - targetChoiceCount);
 
-        return GetWeightedQuestions(project, settings);
-    }
-
-    private static List<Question> GetRandomQuestions(List<Question> allQuestions, int count)
-    {
-        return allQuestions.OrderBy(_ => Random.Shared.Next()).Take(count).ToList();
-    }
-
-    private static List<Question> GetWeightedQuestions(Project project, ExamSettings settings)
-    {
-        var selectedQuestions = new List<Question>();
-        var weights = settings.ChapterWeights!;
-        var totalWeight = weights.Values.Sum();
-
-        if (totalWeight <= 0)
-            return [];
-
-        foreach (var chapter in project.Chapters ?? [])
+        var missingCount = settings.QuestionCount - targetChoiceCount - targetShortAnswerCount;
+        if (missingCount > 0)
         {
-            if (chapter.Name is null ||
-                !weights.TryGetValue(chapter.Name, out var weight) ||
-                weight == 0 ||
-                chapter.Questions is null)
-            {
-                continue;
-            }
+            var remainingChoices = choices.Count - targetChoiceCount;
+            var choiceSupplement = Math.Min(remainingChoices, missingCount);
+            targetChoiceCount += choiceSupplement;
+            missingCount -= choiceSupplement;
 
-            var proportion = weight / totalWeight;
-            var chapterQuestionCount = (int)Math.Round(settings.QuestionCount * proportion);
-            chapterQuestionCount = Math.Max(1, Math.Min(chapterQuestionCount, chapter.Questions.Count));
-
-            selectedQuestions.AddRange(
-                chapter.Questions
-                    .OrderBy(_ => Random.Shared.Next())
-                    .Take(chapterQuestionCount)
-                    .Select(CloneQuestion));
+            targetShortAnswerCount += Math.Min(
+                shortAnswers.Count - targetShortAnswerCount,
+                missingCount);
         }
 
-        if (selectedQuestions.Count < settings.QuestionCount)
-        {
-            var remainingCount = settings.QuestionCount - selectedQuestions.Count;
-            var selectedTexts = selectedQuestions.Select(question => question.Text).ToHashSet();
-            var remainingQuestions = project.Chapters?
-                .Where(chapter => chapter.Questions is not null)
-                .SelectMany(chapter => chapter.Questions!)
-                .Where(question => !selectedTexts.Contains(question.Text))
-                .OrderBy(_ => Random.Shared.Next())
-                .Take(remainingCount)
-                .Select(CloneQuestion) ?? [];
+        var selectedChoices = SelectCandidates(choices, targetChoiceCount);
+        var selectedShortAnswers = SelectCandidates(shortAnswers, targetShortAnswerCount);
 
-            selectedQuestions.AddRange(remainingQuestions);
-        }
-
-        return selectedQuestions
-            .OrderBy(_ => Random.Shared.Next())
-            .Take(settings.QuestionCount)
+        return selectedChoices
+            .Concat(selectedShortAnswers)
+            .Select(candidate => CloneQuestion(candidate.Question))
             .ToList();
+    }
+
+    private static double GetChapterWeight(ExamSettings settings, string? chapterName)
+    {
+        if (chapterName is not null &&
+            settings.ChapterWeights?.TryGetValue(chapterName, out var weight) is true)
+        {
+            return Math.Max(0d, weight);
+        }
+
+        return 0d;
+    }
+
+    private static List<QuestionCandidate> SelectCandidates(
+        IReadOnlyCollection<QuestionCandidate> candidates,
+        int count)
+    {
+        if (count <= 0)
+            return [];
+
+        var chapterCandidateCounts = candidates
+            .GroupBy(candidate => candidate.ChapterName)
+            .ToDictionary(group => group.Key, group => group.Count());
+        var positiveWeightCandidates = candidates
+            .Where(candidate => candidate.ChapterWeight > 0d)
+            .OrderByDescending(candidate => CreateWeightedRandomKey(
+                candidate.ChapterWeight / chapterCandidateCounts[candidate.ChapterName]))
+            .Take(count)
+            .ToList();
+
+        if (positiveWeightCandidates.Count >= count)
+            return positiveWeightCandidates;
+
+        var selectedQuestions = positiveWeightCandidates
+            .Select(candidate => candidate.Question)
+            .ToHashSet();
+        var supplements = candidates
+            .Where(candidate => !selectedQuestions.Contains(candidate.Question))
+            .OrderBy(_ => Random.Shared.Next())
+            .Take(count - positiveWeightCandidates.Count);
+
+        positiveWeightCandidates.AddRange(supplements);
+        return positiveWeightCandidates;
+    }
+
+    private static double CreateWeightedRandomKey(double weight)
+    {
+        var random = Math.Max(double.Epsilon, Random.Shared.NextDouble());
+        return Math.Pow(random, 1d / weight);
     }
 
     private static Question CloneQuestion(Question question)
@@ -97,4 +117,9 @@ public sealed class ExamPaperService : IExamPaperService
             CorrectAnswer = question.CorrectAnswer,
         };
     }
+
+    private sealed record QuestionCandidate(
+        Question Question,
+        string ChapterName,
+        double ChapterWeight);
 }

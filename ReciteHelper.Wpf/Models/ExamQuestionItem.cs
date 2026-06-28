@@ -1,30 +1,60 @@
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Enums;
+using ReciteHelper.Core.ValueObjects;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Windows;
 
 namespace ReciteHelper.Wpf.Models;
 
-public class ExamQuestionItem : INotifyPropertyChanged
+public sealed class ExamQuestionItem : INotifyPropertyChanged
 {
+    private string _userAnswer = string.Empty;
+    private ExamAnswerStatus _status;
+
     public int Number { get; set; }
     public Question? Question { get; set; }
-    public string? UserAnswer { get; set; }
-    public ExamAnswerStatus Status { get; set; }
+    public int Score { get; set; }
 
-    public Style? StatusStyle
+    public string UserAnswer
     {
-        get => field;
+        get => _userAnswer;
         set
         {
-            field = value;
+            var normalized = value ?? string.Empty;
+            if (_userAnswer == normalized)
+                return;
+
+            _userAnswer = normalized;
+            Status = string.IsNullOrWhiteSpace(_userAnswer)
+                ? ExamAnswerStatus.NotAnswered
+                : ExamAnswerStatus.Answered;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsAnswered));
+        }
+    }
+
+    public ExamAnswerStatus Status
+    {
+        get => _status;
+        set
+        {
+            if (_status == value)
+                return;
+
+            _status = value;
             OnPropertyChanged();
         }
     }
 
+    public string QuestionText => Question?.Text ?? string.Empty;
+    public bool IsSingleChoice => Question?.IsSingleChoice is true;
+    public bool IsAnswered => !string.IsNullOrWhiteSpace(UserAnswer);
+    public IReadOnlyList<QuestionOption> Options => Question?.Options ?? [];
+    public string ScoreLabel => $"（{Score}分）";
+
     public event PropertyChangedEventHandler? PropertyChanged;
-    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }

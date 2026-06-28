@@ -1,339 +1,450 @@
-using FuzzyString;
-using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Enums;
+using ReciteHelper.Core.Interfaces.Services;
+using ReciteHelper.Core.ValueObjects;
+using ReciteHelper.Wpf.Controls.ExamPaper;
 using ReciteHelper.Wpf.Models;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace ReciteHelper.Wpf.Views;
 
-public partial class ExamWindow : Window, INotifyPropertyChanged
+public partial class ExamWindow : Window
 {
-    private readonly IExamAnswerService _examAnswerService;
-    private ObservableCollection<ExamQuestionItem> _questions;
-    private int _currentQuestionIndex = 0;
-    private int _totalQuestions = 0;
-    private int _correctCount = 0;
-    private DateTime _examStartTime;
-    private DispatcherTimer _examTimer;
-    private TimeSpan _examDuration = TimeSpan.FromMinutes(60);
-    private TimeSpan _timeRemaining;
+    private const int ChoiceQuestionScore = 3;
+    private const double FirstPageContentBudget = 640d;
+    private const double RegularPageContentBudget = 860d;
+    private const double PaperContentWidth = 582d;
+    private const double PaginationSafetyMargin = 4d;
 
-    public ExamWindow(List<Question> questions, string examName, IExamAnswerService examAnswerService)
+    private readonly IExamAnswerService _examAnswerService;
+    private readonly ExamSettings _settings;
+    private readonly string _examName;
+    private readonly ObservableCollection<ExamQuestionItem> _questions = [];
+    private readonly List<ExamPaperPage> _pages = [];
+    private readonly DispatcherTimer _examTimer;
+    private int _currentSpreadIndex;
+    private DateTime _examStartTime;
+    private TimeSpan _timeRemaining;
+    private bool _isExamActive;
+    private bool _isSubmitted;
+
+    public ExamWindow(
+        List<Question> questions,
+        string examName,
+        ExamSettings settings,
+        IExamAnswerService examAnswerService)
     {
         _examAnswerService = examAnswerService;
+        _settings = settings;
+        _examName = examName;
+        _timeRemaining = TimeSpan.FromMinutes(settings.ExamTimeMinutes);
+        _examTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _examTimer.Tick += ExamTimer_Tick;
 
         InitializeComponent();
-        DataContext = this;
-
-        GenerateExamNumber();
+        InitializeExamIdentity();
         InitializeQuestions(questions);
-        InitializeTimer();
+        BuildPaperPages();
         ShowInstructions();
-
-        ExamText.Text = $"2025-2026 学年第 1 学期《{examName}》课程考试（A）卷";
+        UpdateTimeDisplay();
+        RenderCurrentSpread();
     }
 
-    private void GenerateExamNumber()
+    private void InitializeExamIdentity()
     {
-        Random random = new Random();
-        string examNumber = $"RK{DateTime.Now:yyyyMMdd}{random.Next(1000, 9999)}";
-        ExamNumberText.Text = examNumber;
+        StudentNameText.Text = "考生0429";
+        ExamNumberText.Text = $"RH{DateTime.Now:yyyyMMdd}{Random.Shared.Next(1000, 9999)}";
+        ToolbarTitleText.Text = $"{_examName} · A卷";
     }
 
-    private void InitializeQuestions(List<Question> questions)
+    private void InitializeQuestions(IReadOnlyList<Question> questions)
     {
-        _questions = new ObservableCollection<ExamQuestionItem>();
+        var orderedQuestions = questions
+            .OrderByDescending(question => question.IsSingleChoice)
+            .ToList();
 
-        for (int i = 0; i < questions.Count; i++)
+        for (var index = 0; index < orderedQuestions.Count; index++)
         {
+            var question = orderedQuestions[index];
             _questions.Add(new ExamQuestionItem
             {
-                Number = i + 1,
-                Question = questions[i],
-                UserAnswer = "",
-                Status = ExamAnswerStatus.NotAnswered,
-                StatusStyle = (Style)FindResource("ExamCardButtonStyle")
+                Number = index + 1,
+                Question = question,
+                Score = question.IsSingleChoice ? ChoiceQuestionScore : _settings.ScorePerQuestion,
+                UserAnswer = string.Empty,
+                Status = ExamAnswerStatus.NotAnswered
             });
+            _questions[^1].PropertyChanged += QuestionItem_PropertyChanged;
         }
-
-        _totalQuestions = _questions.Count;
-        ExamCardItemsControl.ItemsSource = _questions;
-        TotalQuestionsText.Text = _totalQuestions.ToString();
     }
 
-    private void InitializeTimer()
+    private void QuestionItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        _examTimer = new DispatcherTimer();
-        _examTimer.Interval = TimeSpan.FromSeconds(1);
-        _examTimer.Tick += ExamTimer_Tick;
-        _timeRemaining = _examDuration;
-        UpdateTimeDisplay();
+        if (e.PropertyName == nameof(ExamQuestionItem.UserAnswer))
+            UpdateAnsweredCount();
     }
 
-    private void ExamTimer_Tick(object sender, EventArgs e)
+    private void BuildPaperPages()
     {
-        _timeRemaining = _timeRemaining.Subtract(TimeSpan.FromSeconds(1));
-        UpdateTimeDisplay();
+        _pages.Clear();
+        var academicYear = GetAcademicYearText(DateTime.Today);
+        var builder = CreatePageBuilder(true, FirstPageContentBudget, academicYear);
 
-        if (_timeRemaining <= TimeSpan.Zero)
+        AddQuestionSection(
+            ref builder,
+            _questions.Where(question => question.IsSingleChoice).ToList(),
+            "一、选择题",
+            CreateChoiceSectionDescription,
+            ExamPaperElementKind.ChoiceQuestion,
+            EstimateChoiceQuestionHeight,
+            academicYear);
+
+        AddQuestionSection(
+            ref builder,
+            _questions.Where(question => !question.IsSingleChoice).ToList(),
+            "二、解答题",
+            CreateEssaySectionDescription,
+            ExamPaperElementKind.EssayQuestion,
+            EstimateEssayQuestionHeight,
+            academicYear);
+
+        if (_pages.Count == 0 || _pages[^1] != builder.Page)
+            _pages.Add(builder.Page);
+
+        if (_pages.Count % 2 != 0)
+            _pages.Add(CreatePageBuilder(false, RegularPageContentBudget, academicYear).Page);
+
+        foreach (var page in _pages)
+            page.TotalPages = _pages.Count;
+    }
+
+    private void AddQuestionSection(
+        ref PageBuilder builder,
+        IReadOnlyList<ExamQuestionItem> questions,
+        string sectionTitle,
+        Func<IReadOnlyList<ExamQuestionItem>, string> descriptionFactory,
+        ExamPaperElementKind questionKind,
+        Func<ExamQuestionItem, double> heightEstimator,
+        string academicYear)
+    {
+        if (questions.Count == 0)
+            return;
+
+        var description = descriptionFactory(questions);
+        var sectionHeaderHeight = MeasureSectionHeaderHeight(sectionTitle, description);
+        var firstQuestionHeight = heightEstimator(questions[0]);
+        EnsureSpace(
+            ref builder,
+            sectionHeaderHeight + firstQuestionHeight,
+            academicYear);
+        builder.Page.Elements.Add(new ExamPaperElement
         {
-            _examTimer.Stop();
-            TimeRemainingText.Text = "00:00";
-            AutoSubmitExam();
+            Kind = ExamPaperElementKind.SectionHeader,
+            Title = sectionTitle,
+            Description = description
+        });
+        builder.RemainingHeight -= sectionHeaderHeight;
+
+        foreach (var question in questions)
+        {
+            var estimatedHeight = heightEstimator(question);
+            if (estimatedHeight > builder.RemainingHeight && builder.Page.Elements.Count > 0)
+            {
+                CommitPage(builder.Page);
+                builder = CreatePageBuilder(false, RegularPageContentBudget, academicYear);
+            }
+
+            builder.Page.Elements.Add(new ExamPaperElement
+            {
+                Kind = questionKind,
+                Question = question
+            });
+            builder.RemainingHeight -= estimatedHeight;
         }
     }
 
-    private void UpdateTimeDisplay()
+    private void EnsureSpace(
+        ref PageBuilder builder,
+        double requiredHeight,
+        string academicYear)
     {
-        TimeRemainingText.Text = $"{_timeRemaining:mm\\:ss}";
+        if (requiredHeight <= builder.RemainingHeight)
+            return;
 
-        if (_timeRemaining <= TimeSpan.FromMinutes(10))
-        {
-            TimeRemainingText.Foreground = new SolidColorBrush(Colors.Red);
-        }
+        CommitPage(builder.Page);
+        builder = CreatePageBuilder(false, RegularPageContentBudget, academicYear);
+    }
+
+    private void CommitPage(ExamPaperPage page)
+    {
+        if (_pages.Count == 0 || _pages[^1] != page)
+            _pages.Add(page);
+    }
+
+    private PageBuilder CreatePageBuilder(
+        bool showHeader,
+        double contentBudget,
+        string academicYear)
+    {
+        return new PageBuilder(
+            new ExamPaperPage
+            {
+                PageNumber = _pages.Count + 1,
+                ShowPaperHeader = showHeader,
+                IsExamActive = _isExamActive,
+                SubjectName = _examName,
+                AcademicYearText = academicYear
+            },
+            contentBudget);
+    }
+
+    private static string CreateChoiceSectionDescription(IReadOnlyList<ExamQuestionItem> questions)
+    {
+        var score = questions.Sum(question => question.Score);
+        return $"本大题共{questions.Count}小题，每小题{ChoiceQuestionScore}分，满分{score}分。在每小题给出的四个选项中，只有一项是符合题目要求的。";
+    }
+
+    private static string CreateEssaySectionDescription(IReadOnlyList<ExamQuestionItem> questions)
+    {
+        var score = questions.Sum(question => question.Score);
+        var scoreText = questions.Select(question => question.Score).Distinct().Count() == 1
+            ? $"，每小题{questions[0].Score}分"
+            : string.Empty;
+        return $"本大题共{questions.Count}小题{scoreText}，满分{score}分。解答应写出必要的文字说明、作答过程或推理步骤。";
+    }
+
+    private static double EstimateChoiceQuestionHeight(ExamQuestionItem item)
+    {
+        var control = new ChoiceQuestionControl();
+        control.SetQuestion(item, false);
+        control.Measure(new Size(PaperContentWidth, double.PositiveInfinity));
+
+        return Math.Ceiling(control.DesiredSize.Height) + PaginationSafetyMargin;
+    }
+
+    private static double MeasureSectionHeaderHeight(string title, string description)
+    {
+        var control = new ExamSectionHeaderControl();
+        control.SetContent(title, description);
+        control.Measure(new Size(PaperContentWidth, double.PositiveInfinity));
+
+        return Math.Ceiling(control.DesiredSize.Height) + PaginationSafetyMargin;
+    }
+
+    private static double EstimateEssayQuestionHeight(ExamQuestionItem item)
+    {
+        return 128d + EstimateLineCount(item.QuestionText, 35) * 24d;
+    }
+
+    private static int EstimateLineCount(string text, int charactersPerLine)
+    {
+        return Math.Max(1, (int)Math.Ceiling((text?.Length ?? 0) / (double)charactersPerLine));
+    }
+
+    private static string GetAcademicYearText(DateTime date)
+    {
+        return date.Month >= 9
+            ? $"{date.Year}-{date.Year + 1}学年上学期"
+            : $"{date.Year - 1}-{date.Year}学年下学期";
     }
 
     private void ShowInstructions()
     {
-        InstructionsPart.Visibility = Visibility.Visible;
-        ExamPart.Visibility = Visibility.Collapsed;
-        ResultPart.Visibility = Visibility.Collapsed;
-        SubmitExamButton.Visibility = Visibility.Collapsed;
-    }
-
-    private void ShowExam()
-    {
-        InstructionsPart.Visibility = Visibility.Collapsed;
-        ExamPart.Visibility = Visibility.Visible;
-        ResultPart.Visibility = Visibility.Collapsed;
-        SubmitExamButton.Visibility = Visibility.Visible;
-
-        _examStartTime = DateTime.Now;
-        _examTimer.Start();
-        UpdateDisplay();
-    }
-
-    private void ShowResults()
-    {
-        InstructionsPart.Visibility = Visibility.Collapsed;
-        ExamPart.Visibility = Visibility.Collapsed;
-        ResultPart.Visibility = Visibility.Visible;
-        SubmitExamButton.Visibility = Visibility.Collapsed;
-
-        _examTimer.Stop();
-        CalculateScore();
-    }
-
-    private void UpdateDisplay()
-    {
-        if (_questions == null || _questions.Count == 0) return;
-
-        var currentQuestion = _questions[_currentQuestionIndex];
-
-        CurrentQuestionText.Text = (_currentQuestionIndex + 1).ToString();
-        QuestionContentText.Text = currentQuestion.Question.Text;
-
-        AnswerInputTextBox.Text = currentQuestion.UserAnswer;
-        UpdateExamCardStyles();
-    }
-
-    private void UpdateExamCardStyles()
-    {
-        foreach (var question in _questions)
-        {
-            if (question.Number == _currentQuestionIndex + 1)
-            {
-                question.StatusStyle = (Style)FindResource("CurrentExamQuestionStyle");
-            }
-            else if (!string.IsNullOrEmpty(question.UserAnswer))
-            {
-                question.StatusStyle = (Style)FindResource("AnsweredExamQuestionStyle");
-            }
-            else
-            {
-                question.StatusStyle = (Style)FindResource("ExamCardButtonStyle");
-            }
-        }
-    }
-
-    private void CalculateScore()
-    {
-        _correctCount = 0;
-
-        foreach (var question in _questions)
-        {
-            if (string.IsNullOrEmpty(question.UserAnswer)) continue;
-
-            var isCorrect = _examAnswerService.IsCorrect(question.Question!, question.UserAnswer);
-            if (isCorrect)
-                _correctCount++;
-        }
-
-        var score = (_correctCount * 100.0) / _totalQuestions;
-        var wrongCount = _totalQuestions - _correctCount;
-        var timeUsed = DateTime.Now - _examStartTime;
-
-        ScoreText.Text = score.ToString("F0");
-        ScoreDetailText.Text = $"正确率：{score:F1}%";
-        CorrectCountText.Text = $"答对：{_correctCount}题";
-        WrongCountText.Text = $"答错：{wrongCount}题";
-        TimeUsedText.Text = $"用时：{timeUsed:mm\\:ss}";
-
-        if (score >= 90)
-            EncouragementText.Text = "优秀！你的表现非常出色！";
-        else if (score >= 80)
-            EncouragementText.Text = "很好！继续努力！";
-        else if (score >= 60)
-            EncouragementText.Text = "及格了，还有提升空间！";
-        else
-            EncouragementText.Text = "需要多加练习，加油！";
+        _isExamActive = false;
+        _isSubmitted = false;
+        ReadyPanel.Visibility = Visibility.Visible;
+        RunningPanel.Visibility = Visibility.Collapsed;
+        ResultOverlay.Visibility = Visibility.Collapsed;
+        PaperAccessOverlay.Visibility = Visibility.Visible;
+        PaperScrollViewer.Opacity = 0.12d;
+        PaperScrollViewer.IsHitTestVisible = false;
+        SetPagesActive(false);
     }
 
     private void StartExamButton_Click(object sender, RoutedEventArgs e)
     {
-        if (AgreeCheckBox.IsChecked == true)
-        {
-            ShowExam();
-        }
-    }
-
-    private void AgreeCheckBox_Checked(object sender, RoutedEventArgs e)
-    {
-        StartExamButton.IsEnabled = AgreeCheckBox.IsChecked == true;
-    }
-
-    private void ExamCardButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button button && button.CommandParameter is int questionNumber)
-        {
-            SwitchToQuestion(questionNumber);
-        }
-    }
-
-    private void SwitchToQuestion(int questionNumber)
-    {
-        if (questionNumber < 1 || questionNumber > _totalQuestions)
+        if (AgreeCheckBox.IsChecked is not true)
             return;
 
-        SaveCurrentAnswer();
-
-        int targetIndex = questionNumber - 1;
-        _currentQuestionIndex = targetIndex;
-        UpdateDisplay();
+        StartExam();
     }
 
-    private void SaveCurrentAnswer()
+    private void StartExam()
     {
-        var currentQuestion = _questions[_currentQuestionIndex];
-        currentQuestion.UserAnswer = AnswerInputTextBox.Text.Trim();
-
-        if (!string.IsNullOrEmpty(currentQuestion.UserAnswer))
-        {
-            currentQuestion.Status = ExamAnswerStatus.Answered;
-        }
-        else
-        {
-            currentQuestion.Status = ExamAnswerStatus.NotAnswered;
-        }
+        _isExamActive = true;
+        _isSubmitted = false;
+        _examStartTime = DateTime.Now;
+        _timeRemaining = TimeSpan.FromMinutes(_settings.ExamTimeMinutes);
+        ReadyPanel.Visibility = Visibility.Collapsed;
+        RunningPanel.Visibility = Visibility.Visible;
+        ResultOverlay.Visibility = Visibility.Collapsed;
+        PaperAccessOverlay.Visibility = Visibility.Collapsed;
+        PaperScrollViewer.Opacity = 1d;
+        PaperScrollViewer.IsHitTestVisible = true;
+        SetPagesActive(true);
+        UpdateAnsweredCount();
+        UpdateTimeDisplay();
+        _examTimer.Start();
     }
 
-    private void SaveAnswerButton_Click(object sender, RoutedEventArgs e)
+    private void SetPagesActive(bool isActive)
     {
-        SaveCurrentAnswer();
-        UpdateExamCardStyles();
-        MessageBox.Show("答案已保存", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+        foreach (var page in _pages)
+            page.IsExamActive = isActive;
+
+        RenderCurrentSpread();
     }
 
-    private void ClearAnswerButton_Click(object sender, RoutedEventArgs e)
+    private void AgreeCheckBox_Changed(object sender, RoutedEventArgs e)
     {
-        AnswerInputTextBox.Text = "";
-        var currentQuestion = _questions[_currentQuestionIndex];
-        currentQuestion.UserAnswer = "";
-        currentQuestion.Status = ExamAnswerStatus.NotAnswered;
-        UpdateExamCardStyles();
+        StartExamButton.IsEnabled = AgreeCheckBox.IsChecked is true;
     }
 
-    private void NextQuestionButton_Click(object sender, RoutedEventArgs e)
+    private void ExamTimer_Tick(object? sender, EventArgs e)
     {
-        SaveCurrentAnswer();
+        _timeRemaining -= TimeSpan.FromSeconds(1);
+        UpdateTimeDisplay();
+        UpdateAnsweredCount();
 
-        if (_currentQuestionIndex < _totalQuestions - 1)
-        {
-            _currentQuestionIndex++;
-            UpdateDisplay();
-        }
-        else
-        {
-            MessageBox.Show("已经是最后一题了", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-    }
+        if (_timeRemaining > TimeSpan.Zero)
+            return;
 
-    private void AnswerInputTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
-    {
-        // 实时保存答案（可选）
-        // 或者只在点击保存按钮时保存
-    }
-
-    private void SubmitExamButton_Click(object sender, RoutedEventArgs e)
-    {
-        var result = MessageBox.Show("确定要交卷吗？交卷后将不能修改答案。",
-            "确认交卷", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-        if (result == MessageBoxResult.Yes)
-        {
-            SubmitExam();
-        }
-    }
-
-    private void AutoSubmitExam()
-    {
+        _examTimer.Stop();
+        _timeRemaining = TimeSpan.Zero;
+        UpdateTimeDisplay();
         MessageBox.Show("考试时间已到，系统将自动交卷。", "时间到", MessageBoxButton.OK, MessageBoxImage.Information);
         SubmitExam();
     }
 
+    private void UpdateTimeDisplay()
+    {
+        TimeRemainingText.Text = _timeRemaining.TotalHours >= 1
+            ? _timeRemaining.ToString(@"hh\:mm\:ss")
+            : _timeRemaining.ToString(@"mm\:ss");
+        TimeRemainingText.Foreground = _timeRemaining <= TimeSpan.FromMinutes(10)
+            ? new SolidColorBrush(Color.FromRgb(166, 31, 43))
+            : new SolidColorBrush(Color.FromRgb(45, 45, 45));
+    }
+
+    private void UpdateAnsweredCount()
+    {
+        AnsweredCountText.Text = $"{_questions.Count(question => question.IsAnswered)}/{_questions.Count}";
+    }
+
+    private void PreviousSpreadButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentSpreadIndex <= 0)
+            return;
+
+        _currentSpreadIndex--;
+        RenderCurrentSpread();
+    }
+
+    private void NextSpreadButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentSpreadIndex >= GetSpreadCount() - 1)
+            return;
+
+        _currentSpreadIndex++;
+        RenderCurrentSpread();
+    }
+
+    private void RenderCurrentSpread()
+    {
+        if (_pages.Count == 0)
+            return;
+
+        var leftPageIndex = _currentSpreadIndex * 2;
+        var rightPageIndex = Math.Min(leftPageIndex + 1, _pages.Count - 1);
+        LeftPageControl.SetPage(_pages[leftPageIndex]);
+        RightPageControl.SetPage(_pages[rightPageIndex]);
+        SpreadIndicatorText.Text = $"第 {leftPageIndex + 1}-{rightPageIndex + 1} 页";
+        PreviousSpreadButton.IsEnabled = _currentSpreadIndex > 0;
+        NextSpreadButton.IsEnabled = _currentSpreadIndex < GetSpreadCount() - 1;
+        UpdateAnsweredCount();
+    }
+
+    private int GetSpreadCount()
+    {
+        return Math.Max(1, (int)Math.Ceiling(_pages.Count / 2d));
+    }
+
+    private void SubmitExamButton_Click(object sender, RoutedEventArgs e)
+    {
+        var unansweredCount = _questions.Count(question => !question.IsAnswered);
+        var prompt = unansweredCount > 0
+            ? $"还有 {unansweredCount} 道题未作答，确定交卷吗？"
+            : "确定要交卷吗？交卷后将不能修改答案。";
+        var result = MessageBox.Show(prompt, "确认交卷", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (result == MessageBoxResult.Yes)
+            SubmitExam();
+    }
+
     private void SubmitExam()
     {
-        // Make sure to save all answers
-        SaveCurrentAnswer();
-        ShowResults();
+        _examTimer.Stop();
+        _isExamActive = false;
+        _isSubmitted = true;
+        RunningPanel.Visibility = Visibility.Collapsed;
+        SetPagesActive(false);
+        CalculateScore();
+        ResultOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void CalculateScore()
+    {
+        var correctQuestions = _questions
+            .Where(question => question.Question is not null &&
+                _examAnswerService.IsCorrect(question.Question, question.UserAnswer))
+            .ToList();
+        var earnedScore = correctQuestions.Sum(question => question.Score);
+        var totalScore = _questions.Sum(question => question.Score);
+        var correctCount = correctQuestions.Count;
+        var wrongCount = _questions.Count - correctCount;
+        var accuracy = _questions.Count == 0 ? 0d : correctCount * 100d / _questions.Count;
+        var timeUsed = DateTime.Now - _examStartTime;
+
+        ScoreText.Text = earnedScore.ToString();
+        ScoreDetailText.Text = $"满分 {totalScore} 分 · 正确率 {accuracy:F1}%";
+        CorrectCountText.Text = $"答对 {correctCount} 题";
+        WrongCountText.Text = $"答错 {wrongCount} 题";
+        TimeUsedText.Text = $"用时 {timeUsed:mm\\:ss}";
+        EncouragementText.Text = accuracy switch
+        {
+            >= 90d => "成绩优秀，作答准确而稳定。",
+            >= 80d => "整体掌握良好，继续巩固错题。",
+            >= 60d => "已经达到基本要求，薄弱部分仍需复习。",
+            _ => "建议从错题对应的知识点重新开始复习。"
+        };
     }
 
     private void ReviewAnswersButton_Click(object sender, RoutedEventArgs e)
-    { 
-        // Create a window to view the answers
-        var reviewWindow = new ExamReviewWindow(_questions.ToList(), _examAnswerService);
-        reviewWindow.Owner = this;
+    {
+        var reviewWindow = new ExamReviewWindow(_questions.ToList(), _examAnswerService)
+        {
+            Owner = this
+        };
         reviewWindow.ShowDialog();
     }
 
     private void RetryExamButton_Click(object sender, RoutedEventArgs e)
     {
-        // Restart the exam
-        var result = MessageBox.Show("确定要重新开始考试吗？", "重新考试",
-            MessageBoxButton.YesNo, MessageBoxImage.Question);
+        var result = MessageBox.Show("确定要清空答案并重新开始考试吗？", "重新考试", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (result != MessageBoxResult.Yes)
+            return;
 
-        if (result == MessageBoxResult.Yes)
+        foreach (var question in _questions)
         {
-            // Reset all answers
-            foreach (var question in _questions)
-            {
-                question.UserAnswer = "";
-                question.Status = ExamAnswerStatus.NotAnswered;
-            }
-
-            _currentQuestionIndex = 0;
-            _timeRemaining = _examDuration;
-            TimeRemainingText.Foreground = new SolidColorBrush(Color.FromRgb(133, 135, 150));
-
-            ShowExam();
+            question.UserAnswer = string.Empty;
+            question.Status = ExamAnswerStatus.NotAnswered;
         }
+
+        _currentSpreadIndex = 0;
+        StartExam();
     }
 
     private void CloseExamButton_Click(object sender, RoutedEventArgs e)
@@ -343,34 +454,23 @@ public partial class ExamWindow : Window, INotifyPropertyChanged
 
     protected override void OnClosing(CancelEventArgs e)
     {
-        base.OnClosing(e);
-
-        if (ExamPart.Visibility == Visibility.Visible)
+        if (_isExamActive && !_isSubmitted)
         {
-            var result = MessageBox.Show("考试尚未结束，确定要退出吗？", "确认退出",
-                MessageBoxButton.YesNo, MessageBoxImage.Question);
-
+            var result = MessageBox.Show("考试尚未结束，确定要退出吗？", "确认退出", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result == MessageBoxResult.No)
             {
                 e.Cancel = true;
-            }
-            else
-            {
-                _examTimer.Stop();
+                return;
             }
         }
+
+        _examTimer.Stop();
+        base.OnClosing(e);
     }
 
-    
-    public event PropertyChangedEventHandler PropertyChanged;
-    protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+    private sealed class PageBuilder(ExamPaperPage page, double remainingHeight)
     {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-
-    private void AgreeCheckBox_Click(object sender, RoutedEventArgs e)
-    {
-        if (AgreeCheckBox.IsChecked == true) StartExamButton.IsEnabled = true;
-        else StartExamButton?.IsEnabled = false;
+        public ExamPaperPage Page { get; } = page;
+        public double RemainingHeight { get; set; } = remainingHeight;
     }
 }

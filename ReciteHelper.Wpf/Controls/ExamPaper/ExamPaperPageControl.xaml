@@ -1,0 +1,60 @@
+<UserControl
+    x:Class="ReciteHelper.Wpf.Controls.ExamPaper.ExamPaperPageControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="680"
+    Height="962">
+    <Border
+        Background="#FFFEFB"
+        BorderBrush="#C8C5BE"
+        BorderThickness="1"
+        SnapsToDevicePixels="True">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="42" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0" Margin="5,28,0,28">
+                <Line
+                    Margin="0,0,4,0"
+                    HorizontalAlignment="Right"
+                    Stroke="#575757"
+                    StrokeDashArray="3,3"
+                    StrokeThickness="1"
+                    X1="0"
+                    X2="0"
+                    Y1="0"
+                    Y2="906" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    FontFamily="Times New Roman,SimSun"
+                    FontSize="12"
+                    Foreground="#454545"
+                    Text="密封线内禁止答题"
+                    TextOptions.TextFormattingMode="Display">
+                    <TextBlock.LayoutTransform>
+                        <RotateTransform Angle="-90" />
+                    </TextBlock.LayoutTransform>
+                </TextBlock>
+            </Grid>
+
+            <Grid Grid.Column="1" Margin="24,28,30,18" ClipToBounds="True">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="34" />
+                </Grid.RowDefinitions>
+                <StackPanel x:Name="PageContentPanel" />
+                <TextBlock
+                    x:Name="FooterText"
+                    Grid.Row="1"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Bottom"
+                    FontFamily="Times New Roman,SimSun"
+                    FontSize="13"
+                    Foreground="#303030" />
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

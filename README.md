@@ -1,16 +1,16 @@
 # ReciteHelper
 
-<image src="docs/Resources/Dev/photo.png" >
+<p align="center">
+  <img src="docs/Resources/Dev/photo.png" alt="ReciteHelper" />
+</p>
 
-<br/>
+**让课程资料从“存着以后看”变成真正可以练习、检索和复习的学习项目。**
 
-ReciteHelper 是一个基于 AI 的开源桌面记忆辅助软件，能自动解析课程内容、聚合知识点，帮助用户进行高效学习和复习，适合学生、考研党、自学者等使用。 
+ReciteHelper 是一款面向考试复习、课程学习与知识整理的开源 Windows 桌面应用。它能够读取学习资料，借助 AI 提取知识点并生成选择题与简答题，再通过本地文件知识库、智能判分和个性化复习，把一次性的资料处理变成持续可用的学习闭环。
 
-ReciteHelper 承诺永久保持开源、免费的性质。如果您感觉该项目对您有帮助，点个 star 就是对开发者最大的支持。
+无感化AI技术的应用，决定了它从不是在学习软件里简单塞入一个聊天框，而是让 AI 参与资料解析、题目生成、错题辅助与复习调度。每个项目的章节、题库、学习记录和知识库都围绕 项目文件组织；知识库采用项目目录内的文件存储，无需额外部署数据库或向量服务。
 
-由于开发者并非科班专业，因此本软件中代码中存在调试遗留、迷惑命名、随性拼写、参数锁死、变量客串、魔法数字、拼音乱入、僵尸代码、脆弱读写、环境依赖、人机缝合、注释欺诈、分大于总、线程互锁等等问题，导致运行相当不稳定。欢迎有能力的各位朋友们优化代码。
-
-本项目使用 C# (.NET 10 / WPF) 开发。
+ReciteHelper 使用 C#、.NET 10 与 WPF 开发，并承诺保持开源、免费。如果这个项目帮助到了你，欢迎点亮 Star。
 
 <div style="display: flex; align-items: center; justify-content: center;">
   <img src="docs/Resources/Logos/clublogo.png" style="height: 50px; width: auto;" />
@@ -21,45 +21,48 @@ ReciteHelper 承诺永久保持开源、免费的性质。如果您感觉该项�
 
 ---
 
-## 功能简介
+## 核心能力
 
-- **PDF 自动知识点聚类**：支持导入 PDF 文本资料，自动拆分为章节/知识点。
-- **章节与知识点浏览**：可按章节、知识点进行有序学习，可标记掌握情况。
-- **题目练习与智能判分**：支持填空题自动判分，允许答案模糊匹配。
-- **模拟考试**：随机抽题，计时考试，自动统计成绩，错题可回顾。
-- **学习数据导出**：支持学习进度、答题记录导出为 JSON 文件。
-- **游戏生成**：支持将题库转换为视觉小说，在游戏中学习吧!
-- **后续预告**：将支持 OCR 图片识别、更多题型、遗忘曲线智能复习等。
+- **从资料自动生成学习项目**：读取文字型 PDF，或先将 DOCX、PPTX、PDF、TXT 等资料合并为 `.meg` 文件；自动完成文本读取、知识提取、章节聚类和向量生成。
+- **选择题与简答题协同练习**：AI 根据资料同时生成单项选择题和简答题；选择题拥有独立的选项交互，简答题支持相似答案判定，不再要求逐字一致。
+- **项目级本地知识库**：创建项目时同步构建文件型向量知识库，并随项目一同加载、导入和导出。资料规模较小时无需安装额外服务，也不依赖常驻后端。
+- **错题检索与 AI 解析**：答错后可检索最相关的 3 个知识点，自动高亮与题目、答案重合的内容；需要时再将题目与检索结果交给 DeepSeek，生成有资料依据的针对性解析。
+- **个性化智能复习**：根据答题表现筛选薄弱内容，并使用项目内的记忆模型安排后续练习，让复习重点随真实学习行为变化。
+- **完整考试流程**：支持按章节和权重组卷、限时考试、自动评分、成绩统计、错题回顾以及考试报告导出。
+- **知识点学习与进度保存**：按章节浏览聚类后的知识点、标记掌握状态，并将做题记录和项目进度持续保存到本地。
+- **学习内容游戏化**：可将现有 `.rhproj` 题库生成为视觉小说项目，用另一种方式回顾熟悉的知识内容（预览功能，6.0版本及以后可能会稳定）。
 
 ---
 
 ## 快速开始
 
 ### 普通用户
-1. 前往 [Releases](https://github.com/ArabidopsisDev/ReciteHelper/releases) 页面下载最新版本。
+1. 前往 [Releases](https://github.com/ArabidopsisDev/ReciteHelper/releases) 下载最新版本。
 2. 解压并运行 `ReciteHelper.exe`。
-3. 按界面提示导入 PDF 学习资料，创建项目后即可体验全部功能。
+3. 在 `Config.xml` 中配置 DeepSeek API Key；使用知识库向量检索还需配置 Qwen API Key。两者均支持从环境变量读取。
+4. 导入文字型 PDF，或使用文件合并工具整理多份资料，创建 `.rhproj` 学习项目。
+
+详细的配置和使用方法请参阅[中文用户手册](docs/manual-cn.md)。
 
 ### 开发者构建
-1. **环境依赖**：需安装 .NET 10 SDK。
-2. **获取源码**：
-   本项目包含子模块，请使用递归克隆：
+1. 安装 [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) 和支持 WPF 开发的 Visual Studio 或 JetBrains Rider。
+2. 本项目包含 Git 子模块，请递归克隆仓库：
+
    ```bash
    git clone --recurse-submodules https://github.com/ArabidopsisDev/ReciteHelper.git
    ```
-   如果已经克隆了仓库，请初始化子模块：
+
+   已经克隆仓库时，可补充初始化子模块：
+
    ```bash
    git submodule update --init --recursive
    ```
-3. **编译运行**：
-   - 使用 JetBrains Rider 或 Visual Studio 打开 `src/ReciteHelper.slnx`。
-   - 或者使用命令行：
-     ```bash
-     dotnet restore
-     dotnet run --project src/ReciteHelper.csproj
-     ```
+3. 使用 IDE 打开 `src/ReciteHelper.slnx`，或通过命令行运行新架构下的 WPF 启动项目：
 
-具体使用方法，请参考**用户手册**。
+   ```bash
+   dotnet restore src/ReciteHelper.slnx
+   dotnet run --project ReciteHelper.Wpf/ReciteHelper.Wpf.csproj
+   ```
 
 ---
 

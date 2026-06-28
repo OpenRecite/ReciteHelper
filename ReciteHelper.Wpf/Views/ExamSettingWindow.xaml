@@ -257,20 +257,21 @@
                                 FontSize="13"
                                 FontWeight="SemiBold"
                                 Foreground="#495057"
-                                Text="每题分数（分）" />
+                                Text="解答题每题分数（分）" />
                             <TextBox
                                 x:Name="ScorePerQuestionTextBox"
                                 Margin="20,0,0,0"
                                 FontFamily="Calibri"
                                 FontSize="15"
                                 Style="{StaticResource NumericTextBoxStyle}"
-                                Text="5" />
+                                Text="5"
+                                TextChanged="ScorePerQuestionTextBox_TextChanged" />
                         </StackPanel>
                         <TextBlock
                             Margin="5,4,0,0"
                             FontSize="11"
                             Foreground="#888888"
-                            Text="设置每道题的分值，全卷每题分数一致" />
+                            Text="选择题固定每题3分，此处设置解答题分值" />
                     </StackPanel>
 
                     <Border
@@ -308,13 +309,13 @@
                                 <StackPanel Grid.Column="1" Orientation="Vertical">
                                     <Label
                                         x:Name="ScorePerQuestionPreview"
-                                        Content="每题分值：5分"
+                                        Content="解答题：每题5分"
                                         FontSize="12"
                                         Foreground="#666666" />
                                     <Label
                                         x:Name="TotalScorePreview"
                                         Margin="0,2,0,0"
-                                        Content="试卷总分：100分"
+                                        Content="预计满分：88分"
                                         FontSize="12"
                                         FontWeight="SemiBold"
                                         Foreground="#28A745" />
