@@ -457,6 +457,14 @@
                         HorizontalAlignment="Right"
                         Orientation="Horizontal">
                         <Button
+                            x:Name="AskDeepSeekButton"
+                            Margin="0,0,20,0"
+                            Click="AskDeepSeekButton_Click"
+                            Content="问一问"
+                            IsEnabled="False"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            ToolTip="提交答案后，询问 DeepSeek 当前题目的解析" />
+                        <Button
                             x:Name="SubmitButton"
                             Click="SubmitButton_Click"
                             Content="提交答案"
@@ -568,7 +576,7 @@
                             Margin="0,4,0,0"
                             FontSize="12"
                             Foreground="#6B7280"
-                            Text="基于当前项目知识库" />
+                            Text="结合当前题目与项目知识库" />
                     </StackPanel>
                     <Button
                         Grid.Column="1"
