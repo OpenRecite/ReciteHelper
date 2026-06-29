@@ -216,7 +216,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
         var dialog = new OpenFileDialog
         {
             Title = "选择要导入的试卷",
-            Filter = "试卷文件 (*.pdf;*.txt)|*.pdf;*.txt|PDF 文件 (*.pdf)|*.pdf|文本文件 (*.txt)|*.txt",
+            Filter = "试卷文件 (*.pdf;*.txt;*.html;*.htm;*.mhtml;*.mht)|*.pdf;*.txt;*.html;*.htm;*.mhtml;*.mht|学堂在线网页 (*.html;*.htm;*.mhtml;*.mht)|*.html;*.htm;*.mhtml;*.mht|PDF 文件 (*.pdf)|*.pdf|文本文件 (*.txt)|*.txt",
             Multiselect = false,
             CheckFileExists = true
         };
