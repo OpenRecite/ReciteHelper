@@ -11,29 +11,23 @@ internal static partial class XuetangXExamHtmlFilter
         if (string.IsNullOrWhiteSpace(html))
             throw new InvalidDataException("HTML 试卷文件为空。");
 
-        var questionStarts = ResultItemStartRegex().Matches(html);
-        if (questionStarts.Count == 0)
+        var questionSegments = ExtractQuestionSegments(html);
+        if (questionSegments.Count == 0)
         {
             throw new InvalidDataException(
                 "未在 HTML 中找到学堂在线考试结果题目。请从考试结果页保存包含题目和正确答案的完整网页。");
         }
 
         var output = new StringBuilder();
-        var titleMatch = HeaderTitleRegex().Match(html);
-        if (titleMatch.Success)
+        var title = ExtractTitle(html);
+        if (!string.IsNullOrWhiteSpace(title))
         {
-            var title = ToPlainText(titleMatch.Groups["content"].Value);
-            if (!string.IsNullOrWhiteSpace(title))
-                output.AppendLine($"试卷标题：{title}").AppendLine();
+            output.AppendLine($"试卷标题：{title}").AppendLine();
         }
 
-        for (var index = 0; index < questionStarts.Count; index++)
+        for (var index = 0; index < questionSegments.Count; index++)
         {
-            var start = questionStarts[index].Index;
-            var end = index + 1 < questionStarts.Count
-                ? questionStarts[index + 1].Index
-                : html.Length;
-            var questionText = ToPlainText(html[start..end]);
+            var questionText = ToPlainText(questionSegments[index]);
             if (string.IsNullOrWhiteSpace(questionText))
                 continue;
 
@@ -44,7 +38,27 @@ internal static partial class XuetangXExamHtmlFilter
         return output.ToString().Trim();
     }
 
-    private static string ToPlainText(string html)
+    internal static string ExtractTitle(string html)
+    {
+        var match = HeaderTitleRegex().Match(html);
+        return match.Success ? ToPlainText(match.Groups["content"].Value) : string.Empty;
+    }
+
+    internal static IReadOnlyList<string> ExtractQuestionSegments(string html)
+    {
+        var starts = ResultItemStartRegex().Matches(html);
+        var segments = new List<string>(starts.Count);
+        for (var index = 0; index < starts.Count; index++)
+        {
+            var start = starts[index].Index;
+            var end = index + 1 < starts.Count ? starts[index + 1].Index : html.Length;
+            segments.Add(html[start..end]);
+        }
+
+        return segments;
+    }
+
+    internal static string ToPlainText(string html)
     {
         var text = ScriptAndStyleRegex().Replace(html, " ");
         text = CommentRegex().Replace(text, " ");
