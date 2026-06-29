@@ -19,6 +19,7 @@ public partial class EssayQuestionControl : UserControl
         NumberRun.Text = $"{item.Number}. ";
         ScoreRun.Text = $"{item.ScoreLabel} ";
         QuestionRun.Text = item.QuestionText;
+        AnswerTextBox.Height = item.IsTermDefinition ? 72d : 112d;
 
         _isLoading = true;
         AnswerTextBox.Text = item.UserAnswer;

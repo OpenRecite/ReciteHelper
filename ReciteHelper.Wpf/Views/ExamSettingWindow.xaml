@@ -111,24 +111,50 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <StackPanel
+        <Grid
             Grid.Row="0"
-            Margin="0,0,0,20"
-            Orientation="Horizontal">
-            <TextBlock
-                FontSize="20"
-                FontWeight="Bold"
-                Foreground="#333333"
-                Text="考试设置" />
-            <TextBlock
-                Margin="10,0,0,0"
-                VerticalAlignment="Bottom"
-                FontSize="14"
-                Foreground="#666666"
-                Text=" - 配置模拟考试参数" />
-        </StackPanel>
+            Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock
+                    FontSize="20"
+                    FontWeight="Bold"
+                    Foreground="#333333"
+                    Text="考试设置" />
+                <TextBlock
+                    Margin="10,0,0,0"
+                    VerticalAlignment="Bottom"
+                    FontSize="14"
+                    Foreground="#666666"
+                    Text=" - 配置模拟考试参数" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                <CheckBox
+                    x:Name="LoadExamSetCheckBox"
+                    Margin="0,0,12,0"
+                    VerticalAlignment="Center"
+                    Checked="LoadExamSetCheckBox_Changed"
+                    Content="加载套卷"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Foreground="#333333"
+                    IsEnabled="False"
+                    Unchecked="LoadExamSetCheckBox_Changed" />
+                <ComboBox
+                    x:Name="ExamSetComboBox"
+                    Width="320"
+                    Height="34"
+                    Padding="8,4"
+                    DisplayMemberPath="DisplayName"
+                    IsEnabled="False"
+                    SelectionChanged="ExamSetComboBox_SelectionChanged" />
+            </StackPanel>
+        </Grid>
 
-        <Grid Grid.Row="1">
+        <Grid x:Name="DefaultPaperSettingsPanel" Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="20" />
@@ -250,29 +276,13 @@
                             Text="设置考试题目数量，范围：5-100题" />
                     </StackPanel>
 
-                    <StackPanel Margin="0,10,0,0" Orientation="Vertical">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock
-                                HorizontalAlignment="Center"
-                                FontSize="13"
-                                FontWeight="SemiBold"
-                                Foreground="#495057"
-                                Text="解答题每题分数（分）" />
-                            <TextBox
-                                x:Name="ScorePerQuestionTextBox"
-                                Margin="20,0,0,0"
-                                FontFamily="Calibri"
-                                FontSize="15"
-                                Style="{StaticResource NumericTextBoxStyle}"
-                                Text="5"
-                                TextChanged="ScorePerQuestionTextBox_TextChanged" />
-                        </StackPanel>
+                    <Border Margin="0,14,0,0" Padding="12" Background="#F8F9FA" BorderBrush="#DEE2E6" BorderThickness="1">
                         <TextBlock
-                            Margin="5,4,0,0"
-                            FontSize="11"
-                            Foreground="#888888"
-                            Text="选择题固定每题3分，此处设置解答题分值" />
-                    </StackPanel>
+                            FontSize="12"
+                            Foreground="#495057"
+                            Text="固定分值：选择3分 · 填空每空1分 · 判断1分 · 名词解释4分 · 解答5分"
+                            TextWrapping="Wrap" />
+                    </Border>
 
                     <Border
                         Margin="0,20,0,0"
@@ -309,7 +319,7 @@
                                 <StackPanel Grid.Column="1" Orientation="Vertical">
                                     <Label
                                         x:Name="ScorePerQuestionPreview"
-                                        Content="解答题：每题5分"
+                                        Content="分值：按题型固定"
                                         FontSize="12"
                                         Foreground="#666666" />
                                     <Label

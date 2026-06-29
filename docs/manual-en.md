@@ -6,7 +6,7 @@
 
 ## Introduction
 
-ReciteHelper is an AI-assisted desktop application for exam preparation, course study, and knowledge organization. It turns study material into a `.rhproj` project containing chapters, knowledge points, single-choice questions, short-answer questions, and a local knowledge base. Each project can then be used for chapter practice, smart review, mock exams, and help with incorrect answers.
+ReciteHelper is an AI-assisted desktop application for exam preparation, course study, and knowledge organization. It turns study material into a `.rhproj` project containing chapters, knowledge points, multiple question types, and a local knowledge base. Each project can then be used for chapter practice, smart review, imported exam sets, mock exams, and help with incorrect answers.
 
 Question data, learning records, and the knowledge base are organized inside the project directory. The knowledge base uses file storage, so no database or standalone vector service needs to be deployed.
 
@@ -81,7 +81,7 @@ Image-only and scanned PDFs cannot currently be read directly. For multiple docu
 Enter a project name, storage directory, and study-material path, then select "Confirm Create." The progress window reports four stages in real time:
 
 1. **Read Text**: reads content from the PDF or `.meg` file.
-2. **Extract Knowledge**: sends text chunks to the AI to generate knowledge points, single-choice questions, and short-answer questions.
+2. **Extract Knowledge**: sends text chunks to the AI to generate knowledge points plus choice, fill-in-the-blank, term-definition, and essay questions. True/false questions come only from imported exam sets.
 3. **Cluster Text**: merges related topics and organizes chapters and question structures.
 4. **Generate Vectors**: builds the project-level file knowledge base used for later retrieval.
 
@@ -118,10 +118,13 @@ Select a chapter containing questions from the chapter selection window to start
 
 ![Question practice](Resources/04-question-exercise.png)
 
-Two question types are currently supported:
+Five question types are supported:
 
 - **Single-choice questions**: select an answer from options A, B, C, and D, then submit it.
-- **Short-answer questions**: enter an answer and submit it. Evaluation uses text similarity and does not require an exact character-for-character match with the reference answer.
+- **Fill-in-the-blank questions**: enter each answer on its corresponding underline; every blank must be completed.
+- **True/false questions**: choose True or False. These questions are sourced only from imported exam sets.
+- **Term-definition questions**: enter the definition; semantic similarity is used for evaluation.
+- **Essay questions**: includes short-answer, discussion, analysis, and calculation tasks with a larger response area.
 
 After submission, the result area shows the judgment, the user's answer, and the correct answer. Results are saved in the project and are used to calculate chapter mastery and schedule smart reviews.
 
@@ -153,7 +156,9 @@ Select "Mock Exam" in the chapter selection window to open the exam settings pag
 
 ![Exam settings](Resources/08-exam-setting.png)
 
-You can configure the course number, duration, question count, points per question, and selection weight for each chapter. Weights do not need to total 100%; ReciteHelper normalizes them automatically.
+You can configure the course number, duration, question count, and selection weight for each chapter. Weights do not need to total 100%; ReciteHelper normalizes them automatically. Scores are fixed at 3 points for choice, 1 per blank, 1 for true/false, 4 for term definitions, and 5 for essays.
+
+The function menu can import PDF or TXT exam files. DeepSeek separates files containing multiple papers and generates answers and explanations; papers are stored under the project's `exams` directory. Enable "Load Exam Set" in mock-exam settings to use one, which disables automatic paper-generation settings. The `small_title` and `main_title` fields in each exam-set JSON customize the two printed titles.
 
 Accept the exam rules to begin. Submit the paper after answering to see the score and response statistics.
 
@@ -169,7 +174,7 @@ Select "View Answers" to review each response, the correct answer, and any avail
 
 ## Import and Export
 
-Open the function menu in the chapter selection window and select Export. ReciteHelper creates `rh_output.zip` inside the project directory. The archive includes the project file, its manifest, and the knowledge-base file when available, making it suitable for backup or sharing.
+Open the function menu in the chapter selection window and select Export. ReciteHelper creates `rh_output.zip` inside the project directory. The archive includes the project file, its manifest, the knowledge-base file when available, and the `exams` directory, making it suitable for backup or sharing.
 
 Answer statuses are cleared only in the exported copy. The active local project is not changed. A recipient can open the archive with the Import function on the main screen.
 

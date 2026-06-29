@@ -89,6 +89,10 @@ public sealed class ProjectFileService : IProjectFileService
             }
         }
 
+        var sourceExamsDirectory = Path.Combine(tempFolder, "exams");
+        if (Directory.Exists(sourceExamsDirectory))
+            CopyDirectory(sourceExamsDirectory, Path.Combine(exactFolder, "exams"));
+
         return new ImportedProject(destinationPath, importedFileName);
     }
 
@@ -128,6 +132,10 @@ public sealed class ProjectFileService : IProjectFileService
             }
         }
 
+        var sourceExamsDirectory = Path.Combine(folderPath, "exams");
+        if (Directory.Exists(sourceExamsDirectory))
+            CopyDirectory(sourceExamsDirectory, Path.Combine(outputFolderPath, "exams"));
+
         await ResetExportedAnswerStatusAsync(exportProjectPath);
 
         var archivePath = Path.Combine(folderPath, "rh_output.zip");
@@ -166,5 +174,21 @@ public sealed class ProjectFileService : IProjectFileService
         return Path.IsPathRooted(path)
             ? path
             : Path.Combine(Path.GetDirectoryName(projectPath)!, path);
+    }
+
+    private static void CopyDirectory(string sourceDirectory, string destinationDirectory)
+    {
+        Directory.CreateDirectory(destinationDirectory);
+        foreach (var filePath in Directory.EnumerateFiles(sourceDirectory))
+        {
+            var destinationPath = Path.Combine(destinationDirectory, Path.GetFileName(filePath));
+            File.Copy(filePath, destinationPath, true);
+        }
+
+        foreach (var childDirectory in Directory.EnumerateDirectories(sourceDirectory))
+        {
+            var childDestination = Path.Combine(destinationDirectory, Path.GetFileName(childDirectory));
+            CopyDirectory(childDirectory, childDestination);
+        }
     }
 }

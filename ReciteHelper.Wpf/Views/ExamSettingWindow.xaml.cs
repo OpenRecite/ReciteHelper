@@ -14,18 +14,22 @@ namespace ReciteHelper.Wpf.Views {
         private readonly IExamAnswerService _examAnswerService;
         private readonly IExamPaperService _examPaperService;
         private readonly IExamSettingsService _examSettingsService;
+        private readonly IExamSetRepository _examSetRepository;
         private Project _project;
         private List<ChapterWeightSetting> _chapterWeights;
+        private IReadOnlyList<ExamSet> _examSets = [];
 
         public ExamSettingWindow(
             Project project,
             IExamAnswerService examAnswerService,
             IExamPaperService examPaperService,
-            IExamSettingsService examSettingsService)
+            IExamSettingsService examSettingsService,
+            IExamSetRepository examSetRepository)
         {
             _examAnswerService = examAnswerService;
             _examPaperService = examPaperService;
             _examSettingsService = examSettingsService;
+            _examSetRepository = examSetRepository;
 
             InitializeComponent();
             _project = project;
@@ -33,6 +37,27 @@ namespace ReciteHelper.Wpf.Views {
             InitializeSettings();
             InitializeChapterWeights();
             UpdatePreview();
+            Loaded += async (_, _) => await LoadExamSetsAsync();
+        }
+
+        private async Task LoadExamSetsAsync()
+        {
+            try
+            {
+                _examSets = await _examSetRepository.LoadAllAsync(_project);
+                ExamSetComboBox.ItemsSource = _examSets;
+                LoadExamSetCheckBox.IsEnabled = _examSets.Count > 0;
+                LoadExamSetCheckBox.ToolTip = _examSets.Count > 0
+                    ? $"已找到 {_examSets.Count} 套导入试卷"
+                    : "当前项目尚未导入套卷";
+                if (_examSets.Count > 0)
+                    ExamSetComboBox.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                LoadExamSetCheckBox.IsEnabled = false;
+                MessageBox.Show($"加载套卷目录失败：{ex.Message}", "加载失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private void InitializeSettings()
@@ -42,7 +67,6 @@ namespace ReciteHelper.Wpf.Views {
             ExamTimeSlider.Value = 60;
             QuestionCountTextBox.Text = "20";
             QuestionCountSlider.Value = 20;
-            ScorePerQuestionTextBox.Text = "5";
         }
 
         private void InitializeChapterWeights()
@@ -84,22 +108,17 @@ namespace ReciteHelper.Wpf.Views {
                 QuestionCountPreview?.Content = $"考试题量：{questionCount}题";
             }
 
-            if (int.TryParse(ScorePerQuestionTextBox?.Text, out int scorePerQuestion))
+            if (int.TryParse(QuestionCountTextBox?.Text, out int totalQuestions))
             {
-                ScorePerQuestionPreview?.Content = $"解答题：每题{scorePerQuestion}分";
-
-                if (int.TryParse(QuestionCountTextBox?.Text, out int totalQuestions))
-                {
-                    var choiceCount = (int)Math.Round(totalQuestions * 0.30d, MidpointRounding.AwayFromZero);
-                    var totalScore = choiceCount * 3 + (totalQuestions - choiceCount) * scorePerQuestion;
-                    TotalScorePreview?.Content = $"预计满分：{totalScore}分";
-                }
+                var choiceCount = (int)Math.Round(totalQuestions * 0.30d, MidpointRounding.AwayFromZero);
+                var remainingCount = totalQuestions - choiceCount;
+                var fillBlankCount = (int)Math.Round(remainingCount * 0.35d, MidpointRounding.AwayFromZero);
+                var termCount = (int)Math.Round(remainingCount * 0.20d, MidpointRounding.AwayFromZero);
+                var essayCount = remainingCount - fillBlankCount - termCount;
+                var totalScore = choiceCount * 3 + fillBlankCount + termCount * 4 + essayCount * 5;
+                ScorePerQuestionPreview?.Content = "分值：按题型固定";
+                TotalScorePreview?.Content = $"预计满分：{totalScore}分";
             }
-        }
-
-        private void ScorePerQuestionTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            UpdatePreview();
         }
 
         private void UpdateTotalWeight()
@@ -215,7 +234,7 @@ namespace ReciteHelper.Wpf.Views {
                 CourseNumberTextBox.Text,
                 int.Parse(ExamTimeTextBox.Text),
                 int.Parse(QuestionCountTextBox.Text),
-                int.Parse(ScorePerQuestionTextBox.Text),
+                5,
                 _chapterWeights.ToDictionary(c => c.ChapterName, c => c.Weight)
             );
 
@@ -236,6 +255,12 @@ namespace ReciteHelper.Wpf.Views {
 
         private async void StartExamButton_Click(object sender, RoutedEventArgs e)
         {
+            if (LoadExamSetCheckBox.IsChecked is true)
+            {
+                StartImportedExam();
+                return;
+            }
+
             if (!ValidateInputs())
                 return;
 
@@ -245,7 +270,7 @@ namespace ReciteHelper.Wpf.Views {
                 CourseNumberTextBox.Text,
                 int.Parse(ExamTimeTextBox.Text),
                 int.Parse(QuestionCountTextBox.Text),
-                int.Parse(ScorePerQuestionTextBox.Text),
+                5,
                 _chapterWeights.ToDictionary(c => c.ChapterName, c => c.Weight)
             );
 
@@ -279,6 +304,60 @@ namespace ReciteHelper.Wpf.Views {
             Close();
         }
 
+        private void StartImportedExam()
+        {
+            if (ExamSetComboBox.SelectedItem is not ExamSet examSet)
+            {
+                MessageBox.Show("请选择要加载的套卷。", "未选择套卷", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var examSettings = ExamSettings.Create(
+                "IMPORTED",
+                examSet.SuggestedDurationMinutes,
+                examSet.Questions.Count,
+                10,
+                null);
+            var examWindow = new ExamWindow(
+                examSet.Questions.Select(item => item.Question).ToList(),
+                examSet.ResolvedMainTitle,
+                examSettings,
+                _examAnswerService,
+                examSet.Questions,
+                examSet.ResolvedSmallTitle);
+            examWindow.Show();
+            Close();
+        }
+
+        private void LoadExamSetCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!IsInitialized)
+                return;
+
+            var useImportedSet = LoadExamSetCheckBox.IsChecked is true;
+            DefaultPaperSettingsPanel.IsEnabled = !useImportedSet;
+            ExamSetComboBox.IsEnabled = useImportedSet;
+            SaveButton.IsEnabled = !useImportedSet;
+            UpdateImportedSetPreview();
+        }
+
+        private void ExamSetComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateImportedSetPreview();
+        }
+
+        private void UpdateImportedSetPreview()
+        {
+            if (LoadExamSetCheckBox.IsChecked is not true || ExamSetComboBox.SelectedItem is not ExamSet examSet)
+                return;
+
+            var totalScore = examSet.Questions.Sum(item => item.Score);
+            TotalTimePreview.Content = $"考试时间：{examSet.SuggestedDurationMinutes}分钟";
+            QuestionCountPreview.Content = $"考试题量：{examSet.Questions.Count}题";
+            ScorePerQuestionPreview.Content = "题目与分值：采用原卷";
+            TotalScorePreview.Content = $"试卷满分：{totalScore}分";
+        }
+
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
             DialogResult = false;
@@ -302,15 +381,6 @@ namespace ReciteHelper.Wpf.Views {
                 MessageBox.Show("考试题量必须在5-100题之间", "输入错误",
                     MessageBoxButton.OK, MessageBoxImage.Error);
                 QuestionCountTextBox.Focus();
-                return false;
-            }
-
-            // Verify the score for each question
-            if (!int.TryParse(ScorePerQuestionTextBox.Text, out int scorePerQuestion) || scorePerQuestion <= 0)
-            {
-                MessageBox.Show("解答题每题分数必须为正整数", "输入错误",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-                ScorePerQuestionTextBox.Focus();
                 return false;
             }
 

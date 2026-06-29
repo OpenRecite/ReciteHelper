@@ -147,6 +147,10 @@
                         <Button.ContextMenu>
                             <ContextMenu x:Name="FunctionMenu">
                                 <MenuItem
+                                    Click="ImportExamMenuItem_Click"
+                                    Header="导入试卷（PDF/TXT）"
+                                    Style="{StaticResource MenuItemStyle}" />
+                                <MenuItem
                                     Click="ExportMenuItem_Click"
                                     Header="导出"
                                     Style="{StaticResource MenuItemStyle}" />

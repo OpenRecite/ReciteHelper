@@ -15,15 +15,30 @@ public partial class ProgressWindow : Window, INotifyPropertyChanged
     private static readonly Brush InactiveTextBrush = new SolidColorBrush(Color.FromRgb(100, 116, 139));
 
     private ProjectCreationStage _currentStage = ProjectCreationStage.ReadingText;
+    private ExamSetImportStage _currentExamStage = ExamSetImportStage.ReadingSource;
     private bool _isClosed;
 
-    public ProgressWindow()
+    public ProgressWindow() : this(ProgressWindowMode.ProjectCreation)
+    {
+    }
+
+    public ProgressWindow(ProgressWindowMode mode)
     {
         InitializeComponent();
         DataContext = this;
         Closed += (_, _) => _isClosed = true;
-        ApplyStage(ProjectCreationStage.ReadingText, "正在读取题库文件，随后将进入知识提取。");
-        SetProgress(0, 1, true, "读取进度");
+
+        if (mode == ProgressWindowMode.ExamSetImport)
+        {
+            ConfigureExamSetImportMode();
+            ApplyExamStage(ExamSetImportStage.ReadingSource, "正在读取所选试卷文件。");
+            SetProgress(0, 1, true, "文件读取");
+        }
+        else
+        {
+            ApplyStage(ProjectCreationStage.ReadingText, "正在读取题库文件，随后将进入知识提取。");
+            SetProgress(0, 1, true, "读取进度");
+        }
     }
 
     public Brush Step1Brush { get => field; private set => SetField(ref field, value); } = ActiveBrush;
@@ -74,6 +89,88 @@ public partial class ProgressWindow : Window, INotifyPropertyChanged
         };
 
         SetProgress(current, total, total <= 0, label);
+    }
+
+    public void ApplyProgress(ExamSetImportProgress progress)
+    {
+        if (_isClosed)
+            return;
+
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(() => ApplyProgress(progress));
+            return;
+        }
+
+        var stage = progress.Stage < _currentExamStage ? _currentExamStage : progress.Stage;
+        ApplyExamStage(stage, progress.Message);
+        var current = progress.Completed ?? 0;
+        var total = progress.Total ?? 0;
+        var determinate = stage is ExamSetImportStage.ValidatingQuestions or
+            ExamSetImportStage.SavingPapers or ExamSetImportStage.Completed && total > 0;
+        var label = stage switch
+        {
+            ExamSetImportStage.ReadingSource => "文件读取",
+            ExamSetImportStage.ExtractingPapers => "DeepSeek 处理",
+            ExamSetImportStage.ValidatingQuestions => "套卷校验",
+            ExamSetImportStage.SavingPapers => "保存进度",
+            ExamSetImportStage.Completed => "完成状态",
+            _ => "当前进度"
+        };
+        SetProgress(current, total, !determinate, label);
+    }
+
+    private void ConfigureExamSetImportMode()
+    {
+        Title = "导入试卷";
+        WindowHeadingText.Text = "正在创建套卷";
+        WindowSubheadingText.Text = "DeepSeek 将识别套卷边界，并整理题目、答案与解析。";
+        Step1Label.Text = "读取试卷";
+        Step2Label.Text = "AI 抽取";
+        Step3Label.Text = "题目校验";
+        Step4Label.Text = "保存套卷";
+        FooterText.Text = "试卷较多时可能需要几分钟，窗口会保持响应。";
+        SetVisualStage(1);
+    }
+
+    private void ApplyExamStage(ExamSetImportStage stage, string? label)
+    {
+        _currentExamStage = stage;
+        SetVisualStage(Math.Min((int)stage, 4));
+        (CurrentTitle, CurrentDescription) = stage switch
+        {
+            ExamSetImportStage.ReadingSource => (
+                "正在读取试卷内容",
+                label ?? "正在从 PDF 或 TXT 中提取可供识别的文字。"),
+            ExamSetImportStage.ExtractingPapers => (
+                "DeepSeek 正在识别套卷",
+                label ?? "正在区分不同套卷，并抽取题目、题型、答案、解析和标题。"),
+            ExamSetImportStage.ValidatingQuestions => (
+                "正在校验题目结构",
+                label ?? "正在修复填空空位、规范题型，并检查答案与解析是否完整。"),
+            ExamSetImportStage.SavingPapers => (
+                "正在保存套卷文件",
+                label ?? "正在将校验后的套卷写入项目 exams 目录。"),
+            ExamSetImportStage.Completed => (
+                "套卷导入完成",
+                label ?? "所有套卷均已保存，可以在模拟考试中加载。"),
+            _ => ("正在导入试卷", label ?? "试卷正在处理中。")
+        };
+    }
+
+    private void SetVisualStage(int stage)
+    {
+        Step1Brush = stage >= 1 ? ActiveBrush : InactiveBrush;
+        Step2Brush = stage >= 2 ? ActiveBrush : InactiveBrush;
+        Step3Brush = stage >= 3 ? ActiveBrush : InactiveBrush;
+        Step4Brush = stage >= 4 ? ActiveBrush : InactiveBrush;
+        Step1TextBrush = stage >= 1 ? ActiveTextBrush : InactiveTextBrush;
+        Step2TextBrush = stage >= 2 ? ActiveTextBrush : InactiveTextBrush;
+        Step3TextBrush = stage >= 3 ? ActiveTextBrush : InactiveTextBrush;
+        Step4TextBrush = stage >= 4 ? ActiveTextBrush : InactiveTextBrush;
+        Line1Brush = stage >= 2 ? ActiveBrush : InactiveBrush;
+        Line2Brush = stage >= 3 ? ActiveBrush : InactiveBrush;
+        Line3Brush = stage >= 4 ? ActiveBrush : InactiveBrush;
     }
 
     private void ApplyStage(ProjectCreationStage stage, string? label)
@@ -159,4 +256,10 @@ public partial class ProgressWindow : Window, INotifyPropertyChanged
         OnPropertyChanged(propertyName);
         return true;
     }
+}
+
+public enum ProgressWindowMode
+{
+    ProjectCreation,
+    ExamSetImport
 }

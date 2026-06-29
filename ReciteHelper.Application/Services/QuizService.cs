@@ -23,15 +23,11 @@ public class QuizService : IQuizService
         string userAnswer,
         DateTime startTime)
     {
-        var correctAnswer = question.GetCorrectAnswerText();
-        var isCorrect = question.IsSingleChoice
-            ? question.IsCorrectChoiceAnswer(userAnswer)
-            : await _judgeService.JudgeAsync(userAnswer, correctAnswer);
-        var similarity = await _judgeService.CalculateSimilarityAsync(userAnswer, correctAnswer);
+        var (isCorrect, similarity) = await EvaluateAnswerAsync(question, userAnswer);
 
         var config = await _configService.LoadAsync();
         var duration = DateTime.Now - startTime;
-        var rate = userAnswer.Length / duration.TotalSeconds;
+        var rate = userAnswer.Length / Math.Max(0.1d, duration.TotalSeconds);
         var rRelative = rate / config.RStandard;
 
         // Adjust short answer
@@ -71,5 +67,51 @@ public class QuizService : IQuizService
             RRelative = rRelative,
             Similarity = similarity
         };
+    }
+
+    private async Task<(bool IsCorrect, double Similarity)> EvaluateAnswerAsync(
+        Question question,
+        string userAnswer)
+    {
+        if (question.IsSingleChoice)
+        {
+            var correctAnswer = question.GetCorrectAnswerText();
+            return (
+                question.IsCorrectChoiceAnswer(userAnswer),
+                await _judgeService.CalculateSimilarityAsync(userAnswer, correctAnswer));
+        }
+
+        if (question.IsTrueFalse)
+        {
+            var correctAnswer = question.GetCorrectAnswerText();
+            return (
+                question.IsCorrectTrueFalseAnswer(userAnswer),
+                await _judgeService.CalculateSimilarityAsync(
+                    Question.NormalizeTrueFalseAnswer(userAnswer),
+                    correctAnswer));
+        }
+
+        if (question.IsFillBlank)
+        {
+            var userAnswers = Question.SplitBlankAnswers(userAnswer);
+            var correctAnswers = question.GetCorrectAnswers();
+            if (userAnswers.Count != correctAnswers.Count || correctAnswers.Count == 0)
+                return (false, 0d);
+
+            var results = new List<bool>(correctAnswers.Count);
+            var similarities = new List<double>(correctAnswers.Count);
+            for (var index = 0; index < correctAnswers.Count; index++)
+            {
+                results.Add(await _judgeService.JudgeAsync(userAnswers[index], correctAnswers[index]));
+                similarities.Add(await _judgeService.CalculateSimilarityAsync(userAnswers[index], correctAnswers[index]));
+            }
+
+            return (results.All(result => result), similarities.Average());
+        }
+
+        var answer = question.GetCorrectAnswerText();
+        return (
+            await _judgeService.JudgeAsync(userAnswer, answer),
+            await _judgeService.CalculateSimilarityAsync(userAnswer, answer));
     }
 }

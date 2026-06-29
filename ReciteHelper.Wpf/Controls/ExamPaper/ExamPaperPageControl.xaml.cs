@@ -35,6 +35,21 @@ public partial class ExamPaperPageControl : UserControl
                     choice.SetQuestion(element.Question, page.IsExamActive);
                     PageContentPanel.Children.Add(choice);
                     break;
+                case ExamPaperElementKind.FillBlankQuestion when element.Question is not null:
+                    var fillBlank = new FillBlankQuestionControl();
+                    fillBlank.SetQuestion(element.Question, page.IsExamActive);
+                    PageContentPanel.Children.Add(fillBlank);
+                    break;
+                case ExamPaperElementKind.TrueFalseQuestion when element.Question is not null:
+                    var trueFalse = new TrueFalseQuestionControl();
+                    trueFalse.SetQuestion(element.Question, page.IsExamActive);
+                    PageContentPanel.Children.Add(trueFalse);
+                    break;
+                case ExamPaperElementKind.TermDefinitionQuestion when element.Question is not null:
+                    var termDefinition = new EssayQuestionControl();
+                    termDefinition.SetQuestion(element.Question, page.IsExamActive);
+                    PageContentPanel.Children.Add(termDefinition);
+                    break;
                 case ExamPaperElementKind.EssayQuestion when element.Question is not null:
                     var essay = new EssayQuestionControl();
                     essay.SetQuestion(element.Question, page.IsExamActive);

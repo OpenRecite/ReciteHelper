@@ -1,6 +1,7 @@
 using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.Enums;
 using ReciteHelper.Core.ValueObjects;
 
 namespace ReciteHelper.Application.Services;
@@ -19,36 +20,46 @@ public sealed class ExamPaperService : IExamPaperService
                 GetChapterWeight(settings, chapter.Name))))
             .ToList() ?? [];
 
+        candidates = candidates
+            .Where(candidate => candidate.Question.Type != QuestionType.TrueFalse)
+            .ToList();
+
         if (candidates.Count < settings.QuestionCount)
             return [];
 
-        var choices = candidates.Where(candidate => candidate.Question.IsSingleChoice).ToList();
-        var shortAnswers = candidates.Where(candidate => !candidate.Question.IsSingleChoice).ToList();
-        var targetChoiceCount = Math.Min(
-            choices.Count,
-            (int)Math.Round(settings.QuestionCount * ChoiceQuestionRatio, MidpointRounding.AwayFromZero));
-        var targetShortAnswerCount = Math.Min(shortAnswers.Count, settings.QuestionCount - targetChoiceCount);
+        var targetChoiceCount = (int)Math.Round(
+            settings.QuestionCount * ChoiceQuestionRatio,
+            MidpointRounding.AwayFromZero);
+        var remainingCount = settings.QuestionCount - targetChoiceCount;
+        var targetFillBlankCount = (int)Math.Round(remainingCount * 0.35d, MidpointRounding.AwayFromZero);
+        var targetTermDefinitionCount = (int)Math.Round(remainingCount * 0.20d, MidpointRounding.AwayFromZero);
+        var targetEssayCount = remainingCount - targetFillBlankCount - targetTermDefinitionCount;
 
-        var missingCount = settings.QuestionCount - targetChoiceCount - targetShortAnswerCount;
-        if (missingCount > 0)
+        var selected = new List<QuestionCandidate>();
+        SelectType(QuestionType.SingleChoice, targetChoiceCount);
+        SelectType(QuestionType.FillBlank, targetFillBlankCount);
+        SelectType(QuestionType.TermDefinition, targetTermDefinitionCount);
+        SelectType(QuestionType.Essay, targetEssayCount);
+
+        if (selected.Count < settings.QuestionCount)
         {
-            var remainingChoices = choices.Count - targetChoiceCount;
-            var choiceSupplement = Math.Min(remainingChoices, missingCount);
-            targetChoiceCount += choiceSupplement;
-            missingCount -= choiceSupplement;
-
-            targetShortAnswerCount += Math.Min(
-                shortAnswers.Count - targetShortAnswerCount,
-                missingCount);
+            var selectedQuestions = selected.Select(candidate => candidate.Question).ToHashSet();
+            selected.AddRange(SelectCandidates(
+                candidates.Where(candidate => !selectedQuestions.Contains(candidate.Question)).ToList(),
+                settings.QuestionCount - selected.Count));
         }
 
-        var selectedChoices = SelectCandidates(choices, targetChoiceCount);
-        var selectedShortAnswers = SelectCandidates(shortAnswers, targetShortAnswerCount);
-
-        return selectedChoices
-            .Concat(selectedShortAnswers)
+        return selected
+            .OrderBy(candidate => GetTypeOrder(candidate.Question.Type))
             .Select(candidate => CloneQuestion(candidate.Question))
             .ToList();
+
+        void SelectType(QuestionType type, int count)
+        {
+            selected.AddRange(SelectCandidates(
+                candidates.Where(candidate => candidate.Question.Type == type).ToList(),
+                count));
+        }
     }
 
     private static double GetChapterWeight(ExamSettings settings, string? chapterName)
@@ -114,7 +125,20 @@ public sealed class ExamPaperService : IExamPaperService
                 })
                 .ToList(),
             CorrectOptionIds = question.CorrectOptionIds.ToList(),
+            CorrectAnswers = question.CorrectAnswers.ToList(),
             CorrectAnswer = question.CorrectAnswer,
+        };
+    }
+
+    private static int GetTypeOrder(QuestionType type)
+    {
+        return type switch
+        {
+            QuestionType.SingleChoice => 0,
+            QuestionType.FillBlank => 1,
+            QuestionType.TrueFalse => 2,
+            QuestionType.TermDefinition => 3,
+            _ => 4
         };
     }
 

@@ -1,8 +1,10 @@
 using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.DTOs;
 using ReciteHelper.Wpf.Models;
 using ReciteHelper.Wpf.ViewModels;
+using Microsoft.Win32;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
@@ -19,6 +21,8 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
     private readonly IExamAnswerService _examAnswerService;
     private readonly IExamPaperService _examPaperService;
     private readonly IExamSettingsService _examSettingsService;
+    private readonly IExamSetImportService _examSetImportService;
+    private readonly IExamSetRepository _examSetRepository;
     private readonly IGalGameService _galGameService;
     private readonly IQuestionHelpService _questionHelpService;
     private Project? _currentProject;
@@ -33,6 +37,8 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
         IExamAnswerService examAnswerService,
         IExamPaperService examPaperService,
         IExamSettingsService examSettingsService,
+        IExamSetImportService examSetImportService,
+        IExamSetRepository examSetRepository,
         IGalGameService galGameService,
         IQuestionHelpService questionHelpService)
     {
@@ -42,6 +48,8 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
         _examAnswerService = examAnswerService;
         _examPaperService = examPaperService;
         _examSettingsService = examSettingsService;
+        _examSetImportService = examSetImportService;
+        _examSetRepository = examSetRepository;
         _galGameService = galGameService;
         _questionHelpService = questionHelpService;
 
@@ -157,7 +165,8 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
             _currentProject,
             _examAnswerService,
             _examPaperService,
-            _examSettingsService);
+            _examSettingsService,
+            _examSetRepository);
 
         examWindow.Show();
         Close();
@@ -191,6 +200,75 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
     {
         FunctionMenu.PlacementTarget = ExportButton;
         FunctionMenu.IsOpen = true;
+    }
+
+    private async void ImportExamMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentProject is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(Config.Configure.DeepSeekKey))
+        {
+            MessageBox.Show("尚未配置 DeepSeek Key，无法抽取套卷。", "无法导入", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "选择要导入的试卷",
+            Filter = "试卷文件 (*.pdf;*.txt)|*.pdf;*.txt|PDF 文件 (*.pdf)|*.pdf|文本文件 (*.txt)|*.txt",
+            Multiselect = false,
+            CheckFileExists = true
+        };
+        if (dialog.ShowDialog(this) is not true)
+            return;
+
+        var progressWindow = new ProgressWindow(ProgressWindowMode.ExamSetImport)
+        {
+            Owner = this
+        };
+        SetExamImportState(true);
+        try
+        {
+            progressWindow.Show();
+            await Dispatcher.Yield(DispatcherPriority.Background);
+
+            var progress = new Progress<ExamSetImportProgress>(progressWindow.ApplyProgress);
+            var imported = await Task.Run(() => _examSetImportService.ImportAsync(
+                    _currentProject,
+                    dialog.FileName,
+                    Config.Configure.DeepSeekKey,
+                    progress));
+
+            if (progressWindow.IsVisible)
+                progressWindow.Close();
+            MessageBox.Show(
+                $"已从“{Path.GetFileName(dialog.FileName)}”中识别并保存 {imported.Count} 套试卷。\n可在“模拟考试”中选择加载套卷。",
+                "导入完成",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            if (progressWindow.IsVisible)
+                progressWindow.Close();
+            MessageBox.Show($"导入试卷失败：{ex.Message}", "导入失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            if (progressWindow.IsVisible)
+                progressWindow.Close();
+            SetExamImportState(false);
+            UpdateDisplay();
+        }
+    }
+
+    private void SetExamImportState(bool isImporting)
+    {
+        ExportButton.IsEnabled = !isImporting;
+        SimulateButton.IsEnabled = !isImporting;
+        ExportButton.Content = isImporting ? "正在导入..." : "功能菜单";
+        IsEnabled = !isImporting;
     }
 
     private async void GameMenuItem_Click(object sender, RoutedEventArgs e)

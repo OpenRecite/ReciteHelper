@@ -390,6 +390,35 @@
                         TextWrapping="Wrap"
                         VerticalScrollBarVisibility="Auto" />
                     <ItemsControl
+                        x:Name="FillBlankAnswersItemsControl"
+                        Visibility="Collapsed">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,0,22,12" Orientation="Horizontal">
+                                    <TextBlock
+                                        Margin="0,0,8,0"
+                                        VerticalAlignment="Center"
+                                        FontSize="13"
+                                        Foreground="#6B7280"
+                                        Text="{Binding Number, StringFormat='第\{0\}空'}" />
+                                    <TextBox
+                                        Width="190"
+                                        Padding="4,4"
+                                        Background="Transparent"
+                                        BorderBrush="#495057"
+                                        BorderThickness="0,0,0,1"
+                                        FontSize="14"
+                                        Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ItemsControl
                         x:Name="ChoiceOptionsItemsControl"
                         Visibility="Collapsed">
                         <ItemsControl.ItemTemplate>
@@ -403,6 +432,26 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <StackPanel
+                        x:Name="TrueFalseOptionsPanel"
+                        Orientation="Horizontal"
+                        Visibility="Collapsed">
+                        <RadioButton
+                            x:Name="TrueOptionRadioButton"
+                            Margin="0,0,16,0"
+                            Checked="TrueFalseOption_Checked"
+                            Content="正确"
+                            GroupName="QuizTrueFalseOptions"
+                            Style="{StaticResource ChoiceOptionRadioStyle}"
+                            Tag="正确" />
+                        <RadioButton
+                            x:Name="FalseOptionRadioButton"
+                            Checked="TrueFalseOption_Checked"
+                            Content="错误"
+                            GroupName="QuizTrueFalseOptions"
+                            Style="{StaticResource ChoiceOptionRadioStyle}"
+                            Tag="错误" />
+                    </StackPanel>
                     <StackPanel
                         Margin="0,12,0,0"
                         HorizontalAlignment="Right"

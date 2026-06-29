@@ -19,7 +19,7 @@
             BorderThickness="0,0,0,1">
             <TextBox
                 x:Name="AnswerTextBox"
-                MinHeight="112"
+                Height="112"
                 Padding="4,3"
                 AcceptsReturn="True"
                 Background="Transparent"

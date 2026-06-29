@@ -34,9 +34,24 @@ public static class JudgeAnswer
 
     public static bool Run(Question question, string? userAnswer)
     {
-        return question.IsSingleChoice
-            ? question.IsCorrectChoiceAnswer(userAnswer)
-            : Run(userAnswer, question.CorrectAnswer);
+        if (question.IsSingleChoice)
+            return question.IsCorrectChoiceAnswer(userAnswer);
+
+        if (question.IsTrueFalse)
+            return question.IsCorrectTrueFalseAnswer(userAnswer);
+
+        if (question.IsFillBlank)
+        {
+            var userAnswers = Question.SplitBlankAnswers(userAnswer);
+            var correctAnswers = question.GetCorrectAnswers();
+            return correctAnswers.Count > 0 &&
+                   userAnswers.Count == correctAnswers.Count &&
+                   correctAnswers.Select((answer, index) => Run(userAnswers[index], answer)).All(result => result);
+        }
+
+        return !string.IsNullOrWhiteSpace(userAnswer) &&
+               !string.IsNullOrWhiteSpace(question.CorrectAnswer) &&
+               Run(userAnswer, question.CorrectAnswer);
     }
 
     public static double CalculateSimilarity(string? userAnswer, string? correctAnswer)

@@ -33,6 +33,8 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     private Project _project = new();
     private DateTime _startTime = DateTime.Now;
     private string? _selectedChoiceId;
+    private string? _selectedTrueFalseAnswer;
+    private List<FillBlankAnswerItem> _fillBlankAnswers = [];
     private IReadOnlyList<KnowledgeBaseMatch> _helpMatches = [];
     private CancellationTokenSource? _helpCancellation;
     private static readonly Brush HighlightBackground = new SolidColorBrush(Color.FromRgb(205, 250, 224));
@@ -181,6 +183,16 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         var question = currentQuestion.Question!;
         var isEnabled = currentQuestion.Status == AnswerStatus.NotAnswered;
 
+        _selectedChoiceId = null;
+        _selectedTrueFalseAnswer = null;
+        _fillBlankAnswers = [];
+        AnswerTextBox.Visibility = Visibility.Collapsed;
+        ChoiceOptionsItemsControl.Visibility = Visibility.Collapsed;
+        FillBlankAnswersItemsControl.Visibility = Visibility.Collapsed;
+        TrueFalseOptionsPanel.Visibility = Visibility.Collapsed;
+        ChoiceOptionsItemsControl.ItemsSource = null;
+        FillBlankAnswersItemsControl.ItemsSource = null;
+
         if (question.IsSingleChoice)
         {
             _selectedChoiceId = Question.ExtractOptionId(currentQuestion.UserAnswer);
@@ -191,14 +203,36 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
             ChoiceOptionsItemsControl.IsEnabled = isEnabled;
             ChoiceOptionsItemsControl.ItemsSource = question.Options;
         }
+        else if (question.IsFillBlank)
+        {
+            var savedAnswers = Question.SplitBlankAnswers(currentQuestion.UserAnswer);
+            _fillBlankAnswers = Enumerable.Range(0, question.BlankCount)
+                .Select(index => new FillBlankAnswerItem
+                {
+                    Number = index + 1,
+                    Text = index < savedAnswers.Count ? savedAnswers[index] : string.Empty
+                })
+                .ToList();
+            AnswerPromptText.Text = question.BlankCount == 1 ? "请在横线上填写答案：" : "请按顺序填写各空：";
+            FillBlankAnswersItemsControl.ItemsSource = _fillBlankAnswers;
+            FillBlankAnswersItemsControl.Visibility = Visibility.Visible;
+            FillBlankAnswersItemsControl.IsEnabled = isEnabled;
+        }
+        else if (question.IsTrueFalse)
+        {
+            _selectedTrueFalseAnswer = Question.NormalizeTrueFalseAnswer(currentQuestion.UserAnswer);
+            AnswerPromptText.Text = "请判断下列说法：";
+            TrueOptionRadioButton.IsChecked = _selectedTrueFalseAnswer == "正确";
+            FalseOptionRadioButton.IsChecked = _selectedTrueFalseAnswer == "错误";
+            TrueFalseOptionsPanel.Visibility = Visibility.Visible;
+            TrueFalseOptionsPanel.IsEnabled = isEnabled;
+        }
         else
         {
-            _selectedChoiceId = null;
-            AnswerPromptText.Text = "请输入答案：";
-            ChoiceOptionsItemsControl.ItemsSource = null;
-            ChoiceOptionsItemsControl.Visibility = Visibility.Collapsed;
+            AnswerPromptText.Text = question.IsTermDefinition ? "请输入名词解释：" : "请输入解答：";
             AnswerTextBox.Visibility = Visibility.Visible;
-            AnswerTextBox.Text = "";
+            AnswerTextBox.Height = question.IsTermDefinition ? 64d : 100d;
+            AnswerTextBox.Text = currentQuestion.UserAnswer ?? string.Empty;
             AnswerTextBox.IsEnabled = isEnabled;
         }
 
@@ -275,7 +309,9 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
                 break;
         }
 
-        UserAnswerText.Text = question.UserAnswer ?? "";
+        UserAnswerText.Text = question.Question.IsFillBlank
+            ? string.Join("；", Question.SplitBlankAnswers(question.UserAnswer).Select((answer, index) => $"{index + 1}. {answer}"))
+            : question.UserAnswer ?? "";
         CorrectAnswerText.Text = question.Question.GetCorrectAnswerText();
     }
 
@@ -603,6 +639,8 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         ShowResult(currentQuestion);
         AnswerTextBox.IsEnabled = false;
         ChoiceOptionsItemsControl.IsEnabled = false;
+        FillBlankAnswersItemsControl.IsEnabled = false;
+        TrueFalseOptionsPanel.IsEnabled = false;
         UpdateAnswerCardStyles();
 
         var tagCount = _questions[_currentQuestionIndex].Question!.ReviewTag.Count;
@@ -621,9 +659,20 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     private string GetCurrentAnswerText(QuestionItem currentQuestion)
     {
         var question = currentQuestion.Question!;
-        return question.IsSingleChoice
-            ? question.GetOptionDisplayText(_selectedChoiceId)
-            : AnswerTextBox.Text.Trim();
+        if (question.IsSingleChoice)
+            return question.GetOptionDisplayText(_selectedChoiceId);
+
+        if (question.IsFillBlank)
+        {
+            return _fillBlankAnswers.Any(answer => string.IsNullOrWhiteSpace(answer.Text))
+                ? string.Empty
+                : Question.JoinBlankAnswers(_fillBlankAnswers.Select(answer => answer.Text));
+        }
+
+        if (question.IsTrueFalse)
+            return _selectedTrueFalseAnswer ?? string.Empty;
+
+        return AnswerTextBox.Text.Trim();
     }
 
     private async Task PlayPhonkEffect()
@@ -703,6 +752,12 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     {
         if (sender is RadioButton radioButton)
             _selectedChoiceId = radioButton.Tag?.ToString();
+    }
+
+    private void TrueFalseOption_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is RadioButton radioButton)
+            _selectedTrueFalseAnswer = radioButton.Tag?.ToString();
     }
 
 

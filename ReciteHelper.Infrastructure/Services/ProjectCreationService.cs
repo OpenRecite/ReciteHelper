@@ -283,6 +283,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
 
             RepairSplitChoiceOptions(chapter.Questions);
             NormalizeMalformedChoiceQuestions(chapter.Questions);
+            NormalizeGeneratedQuestionTypes(chapter.Questions);
             RemoveDeclarativeShortAnswerQuestions(chapter);
         }
     }
@@ -303,7 +304,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
             if (string.IsNullOrWhiteSpace(question.Text))
                 continue;
 
-            if (question.IsSingleChoice || IsValidShortAnswerStem(question.Text))
+            if (question.IsSingleChoice || IsValidGeneratedQuestion(question))
             {
                 validQuestions.Add(question);
                 continue;
@@ -321,6 +322,23 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         }
 
         chapter.Questions = validQuestions;
+    }
+
+    private static bool IsValidGeneratedQuestion(Question question)
+    {
+        if (string.IsNullOrWhiteSpace(question.CorrectAnswer) && question.GetCorrectAnswers().Count == 0)
+            return false;
+
+        return question.Type switch
+        {
+            QuestionType.FillBlank =>
+                BlankRegex().Matches(question.Text ?? string.Empty).Count is var blankCount &&
+                blankCount > 0 &&
+                blankCount == question.GetCorrectAnswers().Count,
+            QuestionType.TermDefinition => (question.Text ?? string.Empty).StartsWith("名词解释", StringComparison.Ordinal),
+            QuestionType.Essay => IsValidShortAnswerStem(question.Text ?? string.Empty),
+            _ => false
+        };
     }
 
     private static bool IsValidShortAnswerStem(string text)
@@ -350,7 +368,45 @@ public sealed partial class ProjectCreationService : IProjectCreationService
             return false;
 
         question.Text = text.Remove(index, answer.Length).Insert(index, "________");
+        question.Type = QuestionType.FillBlank;
+        question.CorrectAnswers = [answer];
         return IsValidShortAnswerStem(question.Text);
+    }
+
+    private static void NormalizeGeneratedQuestionTypes(List<Question> questions)
+    {
+        questions.RemoveAll(question => question.Type == QuestionType.TrueFalse);
+
+        foreach (var question in questions)
+        {
+            question.CorrectAnswer = question.CorrectAnswer?.Trim();
+            question.CorrectAnswers = question.CorrectAnswers
+                .Where(answer => !string.IsNullOrWhiteSpace(answer))
+                .Select(answer => answer.Trim())
+                .ToList();
+
+            if (question.Type == QuestionType.FillBlank && question.CorrectAnswers.Count == 0 &&
+                !string.IsNullOrWhiteSpace(question.CorrectAnswer))
+            {
+                question.CorrectAnswers = [question.CorrectAnswer];
+            }
+
+            if (question.Type == QuestionType.TermDefinition &&
+                !string.IsNullOrWhiteSpace(question.Text) &&
+                !question.Text.StartsWith("名词解释", StringComparison.Ordinal))
+            {
+                question.Text = $"名词解释：{question.Text.Trim().TrimEnd('。', '？', '?')}";
+            }
+
+            if (question.Type != QuestionType.SingleChoice)
+            {
+                question.Options = [];
+                question.CorrectOptionIds = [];
+            }
+
+            if (question.Type != QuestionType.FillBlank)
+                question.CorrectAnswers = [];
+        }
     }
 
     private static string CreateKnowledgePointName(string text)
@@ -420,7 +476,11 @@ public sealed partial class ProjectCreationService : IProjectCreationService
             question.CorrectOptionIds = ResolveCorrectOptionIds(question, question.Options);
 
             if (question.Options.Count == 0 || question.CorrectOptionIds.Count == 0)
-                question.Type = QuestionType.ShortAnswer;
+            {
+                question.Type = QuestionType.Essay;
+                question.Options = [];
+                question.CorrectOptionIds = [];
+            }
         }
     }
 

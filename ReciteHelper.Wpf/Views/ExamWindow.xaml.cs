@@ -14,7 +14,6 @@ namespace ReciteHelper.Wpf.Views;
 
 public partial class ExamWindow : Window
 {
-    private const int ChoiceQuestionScore = 3;
     private const double FirstPageContentBudget = 640d;
     private const double RegularPageContentBudget = 860d;
     private const double PaperContentWidth = 582d;
@@ -23,6 +22,7 @@ public partial class ExamWindow : Window
     private readonly IExamAnswerService _examAnswerService;
     private readonly ExamSettings _settings;
     private readonly string _examName;
+    private readonly string? _paperTitle;
     private readonly ObservableCollection<ExamQuestionItem> _questions = [];
     private readonly List<ExamPaperPage> _pages = [];
     private readonly DispatcherTimer _examTimer;
@@ -36,18 +36,21 @@ public partial class ExamWindow : Window
         List<Question> questions,
         string examName,
         ExamSettings settings,
-        IExamAnswerService examAnswerService)
+        IExamAnswerService examAnswerService,
+        IReadOnlyList<ExamSetQuestion>? examSetQuestions = null,
+        string? paperTitle = null)
     {
         _examAnswerService = examAnswerService;
         _settings = settings;
         _examName = examName;
+        _paperTitle = paperTitle;
         _timeRemaining = TimeSpan.FromMinutes(settings.ExamTimeMinutes);
         _examTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _examTimer.Tick += ExamTimer_Tick;
 
         InitializeComponent();
         InitializeExamIdentity();
-        InitializeQuestions(questions);
+        InitializeQuestions(questions, examSetQuestions);
         BuildPaperPages();
         ShowInstructions();
         UpdateTimeDisplay();
@@ -58,23 +61,35 @@ public partial class ExamWindow : Window
     {
         StudentNameText.Text = "考生0429";
         ExamNumberText.Text = $"RH{DateTime.Now:yyyyMMdd}{Random.Shared.Next(1000, 9999)}";
-        ToolbarTitleText.Text = $"{_examName} · A卷";
+        ToolbarTitleText.Text = $"{_paperTitle ?? _examName} · A卷";
     }
 
-    private void InitializeQuestions(IReadOnlyList<Question> questions)
+    private void InitializeQuestions(
+        IReadOnlyList<Question> questions,
+        IReadOnlyList<ExamSetQuestion>? examSetQuestions)
     {
+        var importedMetadata = new Dictionary<Question, ExamSetQuestion>(ReferenceEqualityComparer.Instance);
+        if (examSetQuestions is not null)
+        {
+            foreach (var item in examSetQuestions)
+                importedMetadata[item.Question] = item;
+        }
         var orderedQuestions = questions
-            .OrderByDescending(question => question.IsSingleChoice)
+            .OrderBy(question => GetQuestionTypeOrder(question.Type))
             .ToList();
 
         for (var index = 0; index < orderedQuestions.Count; index++)
         {
             var question = orderedQuestions[index];
+            var importedQuestion = importedMetadata.TryGetValue(question, out var metadata)
+                ? metadata
+                : null;
             _questions.Add(new ExamQuestionItem
             {
                 Number = index + 1,
                 Question = question,
-                Score = question.IsSingleChoice ? ChoiceQuestionScore : _settings.ScorePerQuestion,
+                Score = importedQuestion?.Score ?? question.DefaultExamScore,
+                Explanation = importedQuestion?.Explanation ?? string.Empty,
                 UserAnswer = string.Empty,
                 Status = ExamAnswerStatus.NotAnswered
             });
@@ -93,20 +108,53 @@ public partial class ExamWindow : Window
         _pages.Clear();
         var academicYear = GetAcademicYearText(DateTime.Today);
         var builder = CreatePageBuilder(true, FirstPageContentBudget, academicYear);
+        var sectionNumber = 0;
 
-        AddQuestionSection(
+        AddQuestionSectionIfAny(
             ref builder,
+            ref sectionNumber,
             _questions.Where(question => question.IsSingleChoice).ToList(),
-            "一、选择题",
+            "选择题",
             CreateChoiceSectionDescription,
             ExamPaperElementKind.ChoiceQuestion,
             EstimateChoiceQuestionHeight,
             academicYear);
 
-        AddQuestionSection(
+        AddQuestionSectionIfAny(
             ref builder,
-            _questions.Where(question => !question.IsSingleChoice).ToList(),
-            "二、解答题",
+            ref sectionNumber,
+            _questions.Where(question => question.IsFillBlank).ToList(),
+            "填空题",
+            CreateFillBlankSectionDescription,
+            ExamPaperElementKind.FillBlankQuestion,
+            EstimateFillBlankQuestionHeight,
+            academicYear);
+
+        AddQuestionSectionIfAny(
+            ref builder,
+            ref sectionNumber,
+            _questions.Where(question => question.IsTrueFalse).ToList(),
+            "判断题",
+            CreateTrueFalseSectionDescription,
+            ExamPaperElementKind.TrueFalseQuestion,
+            EstimateTrueFalseQuestionHeight,
+            academicYear);
+
+        AddQuestionSectionIfAny(
+            ref builder,
+            ref sectionNumber,
+            _questions.Where(question => question.IsTermDefinition).ToList(),
+            "名词解释",
+            CreateTermDefinitionSectionDescription,
+            ExamPaperElementKind.TermDefinitionQuestion,
+            EstimateEssayQuestionHeight,
+            academicYear);
+
+        AddQuestionSectionIfAny(
+            ref builder,
+            ref sectionNumber,
+            _questions.Where(question => question.Question?.IsEssay is true).ToList(),
+            "解答题",
             CreateEssaySectionDescription,
             ExamPaperElementKind.EssayQuestion,
             EstimateEssayQuestionHeight,
@@ -120,6 +168,30 @@ public partial class ExamWindow : Window
 
         foreach (var page in _pages)
             page.TotalPages = _pages.Count;
+    }
+
+    private void AddQuestionSectionIfAny(
+        ref PageBuilder builder,
+        ref int sectionNumber,
+        IReadOnlyList<ExamQuestionItem> questions,
+        string sectionName,
+        Func<IReadOnlyList<ExamQuestionItem>, string> descriptionFactory,
+        ExamPaperElementKind questionKind,
+        Func<ExamQuestionItem, double> heightEstimator,
+        string academicYear)
+    {
+        if (questions.Count == 0)
+            return;
+
+        sectionNumber++;
+        AddQuestionSection(
+            ref builder,
+            questions,
+            $"{GetChineseSectionNumber(sectionNumber)}、{sectionName}",
+            descriptionFactory,
+            questionKind,
+            heightEstimator,
+            academicYear);
     }
 
     private void AddQuestionSection(
@@ -197,7 +269,8 @@ public partial class ExamWindow : Window
                 ShowPaperHeader = showHeader,
                 IsExamActive = _isExamActive,
                 SubjectName = _examName,
-                AcademicYearText = academicYear
+                AcademicYearText = academicYear,
+                ExamTitle = _paperTitle
             },
             contentBudget);
     }
@@ -205,7 +278,10 @@ public partial class ExamWindow : Window
     private static string CreateChoiceSectionDescription(IReadOnlyList<ExamQuestionItem> questions)
     {
         var score = questions.Sum(question => question.Score);
-        return $"本大题共{questions.Count}小题，每小题{ChoiceQuestionScore}分，满分{score}分。在每小题给出的四个选项中，只有一项是符合题目要求的。";
+        var scoreText = questions.Select(question => question.Score).Distinct().Count() == 1
+            ? $"，每小题{questions[0].Score}分"
+            : string.Empty;
+        return $"本大题共{questions.Count}小题{scoreText}，满分{score}分。在每小题给出的选项中，只有一项是符合题目要求的。";
     }
 
     private static string CreateEssaySectionDescription(IReadOnlyList<ExamQuestionItem> questions)
@@ -217,6 +293,23 @@ public partial class ExamWindow : Window
         return $"本大题共{questions.Count}小题{scoreText}，满分{score}分。解答应写出必要的文字说明、作答过程或推理步骤。";
     }
 
+    private static string CreateFillBlankSectionDescription(IReadOnlyList<ExamQuestionItem> questions)
+    {
+        var blanks = questions.Sum(question => Math.Max(1, question.Question?.BlankCount ?? 1));
+        var score = questions.Sum(question => question.Score);
+        return $"本大题共{questions.Count}小题，合计{blanks}空，每空1分，满分{score}分。请将答案填写在相应横线上。";
+    }
+
+    private static string CreateTrueFalseSectionDescription(IReadOnlyList<ExamQuestionItem> questions)
+    {
+        return $"本大题共{questions.Count}小题，每小题1分，满分{questions.Sum(question => question.Score)}分。请判断各题说法是否正确。";
+    }
+
+    private static string CreateTermDefinitionSectionDescription(IReadOnlyList<ExamQuestionItem> questions)
+    {
+        return $"本大题共{questions.Count}小题，每小题4分，满分{questions.Sum(question => question.Score)}分。请准确解释下列名词。";
+    }
+
     private static double EstimateChoiceQuestionHeight(ExamQuestionItem item)
     {
         var control = new ChoiceQuestionControl();
@@ -224,6 +317,20 @@ public partial class ExamWindow : Window
         control.Measure(new Size(PaperContentWidth, double.PositiveInfinity));
 
         return Math.Ceiling(control.DesiredSize.Height) + PaginationSafetyMargin;
+    }
+
+    private static double EstimateFillBlankQuestionHeight(ExamQuestionItem item)
+    {
+        var control = new FillBlankQuestionControl();
+        control.SetQuestion(item, false);
+        return MeasureQuestionControl(control);
+    }
+
+    private static double EstimateTrueFalseQuestionHeight(ExamQuestionItem item)
+    {
+        var control = new TrueFalseQuestionControl();
+        control.SetQuestion(item, false);
+        return MeasureQuestionControl(control);
     }
 
     private static double MeasureSectionHeaderHeight(string title, string description)
@@ -237,12 +344,40 @@ public partial class ExamWindow : Window
 
     private static double EstimateEssayQuestionHeight(ExamQuestionItem item)
     {
-        return 128d + EstimateLineCount(item.QuestionText, 35) * 24d;
+        var control = new EssayQuestionControl();
+        control.SetQuestion(item, false);
+        return MeasureQuestionControl(control);
     }
 
-    private static int EstimateLineCount(string text, int charactersPerLine)
+    private static double MeasureQuestionControl(FrameworkElement control)
     {
-        return Math.Max(1, (int)Math.Ceiling((text?.Length ?? 0) / (double)charactersPerLine));
+        control.Measure(new Size(PaperContentWidth, double.PositiveInfinity));
+        return Math.Ceiling(control.DesiredSize.Height) + PaginationSafetyMargin;
+    }
+
+    private static int GetQuestionTypeOrder(QuestionType type)
+    {
+        return type switch
+        {
+            QuestionType.SingleChoice => 0,
+            QuestionType.FillBlank => 1,
+            QuestionType.TrueFalse => 2,
+            QuestionType.TermDefinition => 3,
+            _ => 4
+        };
+    }
+
+    private static string GetChineseSectionNumber(int number)
+    {
+        return number switch
+        {
+            1 => "一",
+            2 => "二",
+            3 => "三",
+            4 => "四",
+            5 => "五",
+            _ => number.ToString()
+        };
     }
 
     private static string GetAcademicYearText(DateTime date)

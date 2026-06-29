@@ -4,6 +4,9 @@ public enum ExamPaperElementKind
 {
     SectionHeader,
     ChoiceQuestion,
+    FillBlankQuestion,
+    TrueFalseQuestion,
+    TermDefinitionQuestion,
     EssayQuestion
 }
 
@@ -23,5 +26,6 @@ public sealed class ExamPaperPage
     public bool IsExamActive { get; set; }
     public required string SubjectName { get; init; }
     public required string AcademicYearText { get; init; }
+    public string? ExamTitle { get; init; }
     public List<ExamPaperElement> Elements { get; } = [];
 }

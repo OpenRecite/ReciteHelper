@@ -6,6 +6,10 @@ namespace ReciteHelper.Core.Enums;
 [JsonConverter(typeof(QuestionTypeJsonConverter))]
 public enum QuestionType
 {
-    ShortAnswer = 0,
-    SingleChoice = 1
+    Essay = 0,
+    ShortAnswer = Essay,
+    SingleChoice = 1,
+    FillBlank = 2,
+    TrueFalse = 3,
+    TermDefinition = 4
 }

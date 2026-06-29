@@ -1,98 +1,49 @@
 Please generate review questions based on the text content.
 
-Generate both short-answer questions and single-choice questions.
+Generate a balanced mixture of these four types only: SingleChoice, FillBlank, TermDefinition, and Essay.
+Never generate TrueFalse questions. TrueFalse questions are reserved for imported examination papers.
 
-Short-answer questions:
-- Use type = "ShortAnswer".
-- The text field must be a real question, task prompt, or fill-in-the-blank stem. Never copy a declarative knowledge sentence directly as a question.
-- When the source sentence is suitable for memorization, replace the answer part with ________. Do not leave the full source sentence unchanged.
-- For definition questions, format the stem as: 名词解释: 名词.
-- For explanation questions, start with words such as 简述、说明、分析、为什么、如何、哪些, so the user knows what to answer.
-- Fill correct_answer with the expected answer text.
-- Keep options and correct_option_ids as empty arrays.
+General rules:
+- Every text field must be a real question or task prompt. Never copy a declarative knowledge sentence directly as a question.
+- Knowledge points that are only statements belong in know, not bank.
+- Fill every answer field with a reliable answer based only on the source material.
+- Keep review_tag as an empty array.
 
-Single-choice questions:
+SingleChoice:
 - Use type = "SingleChoice".
-- Generate exactly four options with ids A, B, C, and D.
-- Put only a clear question stem in text. Do not embed A/B/C/D options inside text.
-- Fill options as structured objects.
-- Fill correct_option_ids with exactly one id, such as ["B"].
-- Fill correct_answer with the same correct id, such as "B".
-- Do not make all questions single-choice, and do not omit single-choice questions entirely.
+- Generate exactly four structured options with ids A, B, C, and D.
+- Do not embed options inside text.
+- correct_option_ids must contain exactly one id; correct_answer must contain the same id.
+- correct_answers must be an empty array.
 
-If a sentence contains multiple knowledge points, generate multiple questions instead of multiple blanks in one question.
-Knowledge points that are only statements should go into know, not bank. Do not put pure declarative sentences in bank.
-Divide the content into several chapters.
+FillBlank:
+- Use type = "FillBlank".
+- Replace each answer position in the stem with ________.
+- Put answers in correct_answers in the same order as the blanks.
+- For one blank, also put that answer in correct_answer for compatibility.
+- Keep options and correct_option_ids empty.
+- Prefer one clear knowledge point per question. Use multiple blanks only when they form one inseparable fact.
 
-Return only valid JSON for List<Chapter>. Do not include Markdown fences.
+TermDefinition:
+- Use type = "TermDefinition".
+- Format text as "名词解释：术语".
+- Put the complete definition in correct_answer.
+- Keep correct_answers, options, and correct_option_ids empty.
 
-The returned JSON shape is:
+Essay:
+- Use type = "Essay" for all short-answer, explanation, analysis, comparison, calculation, and discussion questions.
+- Start the stem with a clear task word such as 简述、说明、分析、比较、阐述、为什么、如何、哪些.
+- Put the expected answer in correct_answer.
+- Keep correct_answers, options, and correct_option_ids empty.
 
-public class Chapter
-{
-    [JsonPropertyName("name")]
-    [NOTNULL] public string Name { get; set; }
-    [JsonPropertyName("number")]
-    public int Number { get; set; }
-    [JsonPropertyName("bank")]
-    public List<Question>? Questions { get; set; }
-    [JsonPropertyName("know")]
-    public List<KnowledgePoint>? KnowledgePoints { get; set; }
-}
+Divide the content into several chapters. Return only valid JSON for List<Chapter>, without Markdown fences.
 
-public class Question
-{
-    // null means unanswered, true means correct, false means incorrect.
-    [JsonPropertyName("status")]
-    public bool? Status { get; set; }
-    [JsonPropertyName("text")]
-    public string? Text { get; set; }
-    [JsonPropertyName("type")]
-    public string Type { get; set; } // "ShortAnswer" or "SingleChoice"
-    [JsonPropertyName("options")]
-    public List<QuestionOption> Options { get; set; }
-    [JsonPropertyName("correct_option_ids")]
-    public List<string> CorrectOptionIds { get; set; }
-    [JsonPropertyName("correct_answer")]
-    public string? CorrectAnswer { get; set; }
-    // Please keep this item as an empty list.
-    [JsonPropertyName("review_tag")]
-    public List<ReviewTag>? ReviewTag { get; set; }
-}
-
-public class QuestionOption
-{
-    [JsonPropertyName("id")]
-    public string Id { get; set; } // "A", "B", "C", or "D"
-    [JsonPropertyName("text")]
-    public string Text { get; set; }
-}
-
-public class KnowledgePoint
-{
-    [JsonPropertyName("name")]
-    public string? Name { get; set; }
-    [JsonPropertyName("content")]
-    public string? ContentMarkdown { get; set; }
-    // Mark the knowledge point mastery status as false.
-    public bool isMastered { get; set; }
-}
-
-Example:
+JSON shape:
 [
   {
     "name": "Chapter name",
     "number": 1,
     "bank": [
-      {
-        "status": null,
-        "text": "The capital of France is ________.",
-        "type": "ShortAnswer",
-        "options": [],
-        "correct_option_ids": [],
-        "correct_answer": "Paris",
-        "review_tag": []
-      },
       {
         "status": null,
         "text": "Which city is the capital of France?",
@@ -105,6 +56,37 @@ Example:
         ],
         "correct_option_ids": ["B"],
         "correct_answer": "B",
+        "correct_answers": [],
+        "review_tag": []
+      },
+      {
+        "status": null,
+        "text": "The capital of France is ________.",
+        "type": "FillBlank",
+        "options": [],
+        "correct_option_ids": [],
+        "correct_answer": "Paris",
+        "correct_answers": ["Paris"],
+        "review_tag": []
+      },
+      {
+        "status": null,
+        "text": "名词解释：生态位",
+        "type": "TermDefinition",
+        "options": [],
+        "correct_option_ids": [],
+        "correct_answer": "Definition from source material",
+        "correct_answers": [],
+        "review_tag": []
+      },
+      {
+        "status": null,
+        "text": "简述该过程的主要阶段。",
+        "type": "Essay",
+        "options": [],
+        "correct_option_ids": [],
+        "correct_answer": "Expected answer from source material",
+        "correct_answers": [],
         "review_tag": []
       }
     ],

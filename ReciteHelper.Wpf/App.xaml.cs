@@ -44,6 +44,9 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IExamPaperService, ExamPaperService>();
         services.AddSingleton<IExamSettingsService, ExamSettingsService>();
         services.AddSingleton<IExamAnswerService, ExamAnswerService>();
+        services.AddSingleton<IExamSourceTextReader, ExamSourceTextReader>();
+        services.AddSingleton<IExamSetRepository, JsonExamSetRepository>();
+        services.AddSingleton<IExamSetImportService, ExamSetImportService>();
         services.AddSingleton<IProjectFileService, ProjectFileService>();
         services.AddSingleton<IProjectCreationService, ProjectCreationService>();
         services.AddSingleton<IQuestionBankTextService, QuestionBankTextService>();

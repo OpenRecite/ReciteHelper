@@ -14,6 +14,7 @@ public sealed class ExamQuestionItem : INotifyPropertyChanged
     public int Number { get; set; }
     public Question? Question { get; set; }
     public int Score { get; set; }
+    public string Explanation { get; set; } = string.Empty;
 
     public string UserAnswer
     {
@@ -48,7 +49,21 @@ public sealed class ExamQuestionItem : INotifyPropertyChanged
 
     public string QuestionText => Question?.Text ?? string.Empty;
     public bool IsSingleChoice => Question?.IsSingleChoice is true;
-    public bool IsAnswered => !string.IsNullOrWhiteSpace(UserAnswer);
+    public bool IsFillBlank => Question?.IsFillBlank is true;
+    public bool IsTrueFalse => Question?.IsTrueFalse is true;
+    public bool IsTermDefinition => Question?.IsTermDefinition is true;
+    public bool IsAnswered
+    {
+        get
+        {
+            if (!IsFillBlank)
+                return !string.IsNullOrWhiteSpace(UserAnswer);
+
+            var answers = ReciteHelper.Core.Entities.Question.SplitBlankAnswers(UserAnswer);
+            return answers.Count == (Question?.BlankCount ?? 0) &&
+                   answers.All(answer => !string.IsNullOrWhiteSpace(answer));
+        }
+    }
     public IReadOnlyList<QuestionOption> Options => Question?.Options ?? [];
     public string ScoreLabel => $"（{Score}分）";
 

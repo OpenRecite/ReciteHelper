@@ -2,6 +2,7 @@ using ReciteHelper.SharedKernel;
 using ReciteHelper.Core.Enums;
 using ReciteHelper.Core.ValueObjects;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace ReciteHelper.Core.Entities;
 
@@ -9,6 +10,7 @@ public class Question : Entity
 {
     private List<QuestionOption> _options = [];
     private List<string> _correctOptionIds = [];
+    private List<string> _correctAnswers = [];
 
     [JsonConstructor]
     public Question() { }
@@ -20,7 +22,7 @@ public class Question : Entity
     public string? Text { get; set; }
 
     [JsonPropertyName("type")]
-    public QuestionType Type { get; set; } = QuestionType.ShortAnswer;
+    public QuestionType Type { get; set; } = QuestionType.Essay;
 
     [JsonPropertyName("options")]
     public List<QuestionOption> Options
@@ -34,6 +36,13 @@ public class Question : Entity
     {
         get => _correctOptionIds;
         set => _correctOptionIds = value ?? [];
+    }
+
+    [JsonPropertyName("correct_answers")]
+    public List<string> CorrectAnswers
+    {
+        get => _correctAnswers;
+        set => _correctAnswers = value ?? [];
     }
 
     [JsonPropertyName("review_tag")]
@@ -57,8 +66,51 @@ public class Question : Entity
     [JsonIgnore]
     public bool IsSingleChoice => Type == QuestionType.SingleChoice && Options.Count > 0;
 
+    [JsonIgnore]
+    public bool IsFillBlank => Type == QuestionType.FillBlank;
+
+    [JsonIgnore]
+    public bool IsTrueFalse => Type == QuestionType.TrueFalse;
+
+    [JsonIgnore]
+    public bool IsEssay => Type == QuestionType.Essay;
+
+    [JsonIgnore]
+    public bool IsTermDefinition => Type == QuestionType.TermDefinition;
+
+    [JsonIgnore]
+    public int BlankCount => IsFillBlank
+        ? Math.Max(1, Math.Max(GetCorrectAnswers().Count, Regex.Matches(Text ?? string.Empty, @"_{2,}|＿{2,}").Count))
+        : 0;
+
+    [JsonIgnore]
+    public int DefaultExamScore => Type switch
+    {
+        QuestionType.SingleChoice => 3,
+        QuestionType.FillBlank => BlankCount,
+        QuestionType.TrueFalse => 1,
+        QuestionType.TermDefinition => 4,
+        _ => 5
+    };
+
+    [JsonIgnore]
+    public string TypeDisplayName => Type switch
+    {
+        QuestionType.SingleChoice => "选择题",
+        QuestionType.FillBlank => "填空题",
+        QuestionType.TrueFalse => "判断题",
+        QuestionType.TermDefinition => "名词解释",
+        _ => "解答题"
+    };
+
     public string GetCorrectAnswerText()
     {
+        if (IsFillBlank)
+            return string.Join("；", GetCorrectAnswers().Select((answer, index) => $"{index + 1}. {answer}"));
+
+        if (IsTrueFalse)
+            return NormalizeTrueFalseAnswer(CorrectAnswer);
+
         if (!IsSingleChoice)
             return CorrectAnswer ?? string.Empty;
 
@@ -101,6 +153,55 @@ public class Question : Entity
             return false;
 
         return GetCorrectOptionIds().Contains(userOptionId);
+    }
+
+    public IReadOnlyList<string> GetCorrectAnswers()
+    {
+        var answers = CorrectAnswers
+            .Select(answer => answer?.Trim() ?? string.Empty)
+            .Where(answer => !string.IsNullOrWhiteSpace(answer))
+            .ToList();
+        if (answers.Count > 0)
+            return answers;
+
+        return string.IsNullOrWhiteSpace(CorrectAnswer)
+            ? []
+            : [CorrectAnswer.Trim()];
+    }
+
+    public bool IsCorrectTrueFalseAnswer(string? userAnswer)
+    {
+        var correctAnswer = NormalizeTrueFalseAnswer(CorrectAnswer);
+        return IsTrueFalse &&
+               correctAnswer is "正确" or "错误" &&
+               !string.IsNullOrWhiteSpace(userAnswer) &&
+               NormalizeTrueFalseAnswer(userAnswer) == correctAnswer;
+    }
+
+    public static string NormalizeTrueFalseAnswer(string? answer)
+    {
+        var value = (answer ?? string.Empty).Trim().ToLowerInvariant();
+        return value switch
+        {
+            "正确" or "对" or "是" or "true" or "t" or "√" or "yes" => "正确",
+            "错误" or "错" or "否" or "false" or "f" or "×" or "x" or "no" => "错误",
+            _ => value
+        };
+    }
+
+    public static string JoinBlankAnswers(IEnumerable<string> answers)
+    {
+        return string.Join('\u001F', answers.Select(answer => answer.Trim()));
+    }
+
+    public static IReadOnlyList<string> SplitBlankAnswers(string? answers)
+    {
+        if (string.IsNullOrWhiteSpace(answers))
+            return [];
+
+        return answers.Contains('\u001F')
+            ? answers.Split('\u001F').Select(answer => answer.Trim()).ToList()
+            : answers.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
     public static string ExtractOptionId(string? answer)

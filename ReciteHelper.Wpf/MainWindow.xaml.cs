@@ -22,6 +22,8 @@ public partial class MainWindow : Window
     private readonly IExamAnswerService _examAnswerService;
     private readonly IExamPaperService _examPaperService;
     private readonly IExamSettingsService _examSettingsService;
+    private readonly IExamSetImportService _examSetImportService;
+    private readonly IExamSetRepository _examSetRepository;
     private readonly IFileMergeService _fileMergeService;
     private readonly IGalGameService _galGameService;
     private readonly IQuestionHelpService _questionHelpService;
@@ -39,6 +41,8 @@ public partial class MainWindow : Window
         IExamAnswerService examAnswerService,
         IExamPaperService examPaperService,
         IExamSettingsService examSettingsService,
+        IExamSetImportService examSetImportService,
+        IExamSetRepository examSetRepository,
         IFileMergeService fileMergeService,
         IGalGameService galGameService,
         IQuestionHelpService questionHelpService)
@@ -54,6 +58,8 @@ public partial class MainWindow : Window
         _examAnswerService = examAnswerService;
         _examPaperService = examPaperService;
         _examSettingsService = examSettingsService;
+        _examSetImportService = examSetImportService;
+        _examSetRepository = examSetRepository;
         _fileMergeService = fileMergeService;
         _galGameService = galGameService;
         _questionHelpService = questionHelpService;
@@ -295,6 +301,8 @@ public partial class MainWindow : Window
                 _examAnswerService,
                 _examPaperService,
                 _examSettingsService,
+                _examSetImportService,
+                _examSetRepository,
                 _galGameService,
                 _questionHelpService);
             quizWindow.Show();

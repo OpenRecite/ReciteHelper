@@ -1,0 +1,35 @@
+<UserControl
+    x:Class="ReciteHelper.Wpf.Controls.ExamPaper.TrueFalseQuestionControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="0,3,0,10">
+        <TextBlock
+            FontFamily="Times New Roman,SimSun"
+            FontSize="16"
+            LineHeight="24"
+            TextWrapping="Wrap">
+            <Run x:Name="NumberRun" />
+            <Run x:Name="ScoreRun" FontWeight="Bold" />
+            <Run x:Name="QuestionRun" />
+        </TextBlock>
+        <StackPanel Margin="18,5,0,0" Orientation="Horizontal">
+            <RadioButton
+                x:Name="TrueRadioButton"
+                Margin="0,0,28,0"
+                Checked="Option_Checked"
+                Content="正确"
+                FontFamily="Times New Roman,SimSun"
+                FontSize="16"
+                GroupName="PaperTrueFalse"
+                Tag="正确" />
+            <RadioButton
+                x:Name="FalseRadioButton"
+                Checked="Option_Checked"
+                Content="错误"
+                FontFamily="Times New Roman,SimSun"
+                FontSize="16"
+                GroupName="PaperTrueFalse"
+                Tag="错误" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

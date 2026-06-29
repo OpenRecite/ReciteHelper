@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Wpf.Models;
 using ReciteHelper.Wpf.ViewModels;
@@ -18,6 +19,8 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
     private int _totalQuestions;
     private int _correctCount;
     private int _wrongCount;
+    private int _earnedScore;
+    private int _totalScore;
     private double _accuracy;
 
     public ExamReviewWindow(List<ExamQuestionItem> examQuestions, IExamAnswerService examAnswerService)
@@ -38,6 +41,10 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
         _correctCount = _examQuestions.Count(q => _examAnswerService.IsCorrect(q.Question!, q.UserAnswer));
         _wrongCount = _totalQuestions - _correctCount;
         _accuracy = _totalQuestions > 0 ? (_correctCount * 100.0) / _totalQuestions : 0;
+        _totalScore = _examQuestions.Sum(question => question.Score);
+        _earnedScore = _examQuestions
+            .Where(question => _examAnswerService.IsCorrect(question.Question!, question.UserAnswer))
+            .Sum(question => question.Score);
     }
 
     private void InitializeReviewItems()
@@ -51,9 +58,11 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
             {
                 QuestionNumber = i + 1,
                 QuestionContent = examQuestion.Question?.Text ?? "题目内容缺失",
-                UserAnswer = examQuestion.UserAnswer ?? "未作答",
-                CorrectAnswer = examQuestion.Question?.CorrectAnswer ?? "正确答案缺失",
-                Explanation = "无解析",
+                UserAnswer = FormatUserAnswer(examQuestion),
+                CorrectAnswer = examQuestion.Question?.GetCorrectAnswerText() ?? "正确答案缺失",
+                Explanation = string.IsNullOrWhiteSpace(examQuestion.Explanation)
+                    ? "无解析"
+                    : examQuestion.Explanation,
                 IsCorrect = _examAnswerService.IsCorrect(examQuestion.Question!, examQuestion.UserAnswer),
                 ItemStyle = _examAnswerService.IsCorrect(examQuestion.Question!, examQuestion.UserAnswer) ?
                     (Style)FindResource("CorrectAnswerStyle") :
@@ -69,9 +78,8 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
     private void UpdateDisplay()
     {
         // Update exam information
-        var score = (double)_correctCount / _totalQuestions * 100d;
         ExamInfoText.Text = $"模拟考试 - 共{_totalQuestions}题";
-        ScoreSummaryText.Text = $"得分：{score:F0}/100";
+        ScoreSummaryText.Text = $"得分：{_earnedScore}/{_totalScore}";
 
         // Update statistics
         TotalQuestionsText.Text = _totalQuestions.ToString();
@@ -115,6 +123,7 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
         writer.WriteLine($"答对题数：{_correctCount}");
         writer.WriteLine($"答错题数：{_wrongCount}");
         writer.WriteLine($"正确率：{_accuracy:F1}%");
+        writer.WriteLine($"得分：{_earnedScore}/{_totalScore}");
         writer.WriteLine();
         writer.WriteLine("=== 题目详情 ===");
         writer.WriteLine();
@@ -126,11 +135,11 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
 
             writer.WriteLine($"第{i + 1}题 {(isCorrect ? "✓" : "✗")}");
             writer.WriteLine($"题目：{question.Question?.Text}");
-            writer.WriteLine($"您的答案：{question.UserAnswer}");
-            writer.WriteLine($"正确答案：{question.Question?.CorrectAnswer}");
+            writer.WriteLine($"您的答案：{FormatUserAnswer(question)}");
+            writer.WriteLine($"正确答案：{question.Question?.GetCorrectAnswerText()}");
 
 
-            writer.WriteLine($"解析：暂无解析");
+            writer.WriteLine($"解析：{(string.IsNullOrWhiteSpace(question.Explanation) ? "暂无解析" : question.Explanation)}");
 
 
             writer.WriteLine(new string('-', 50));
@@ -141,6 +150,17 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         Close();
+    }
+
+    private static string FormatUserAnswer(ExamQuestionItem item)
+    {
+        if (!item.IsFillBlank)
+            return string.IsNullOrWhiteSpace(item.UserAnswer) ? "未作答" : item.UserAnswer;
+
+        var answers = Question.SplitBlankAnswers(item.UserAnswer);
+        return answers.Count == 0
+            ? "未作答"
+            : string.Join("；", answers.Select((answer, index) => $"{index + 1}. {answer}"));
     }
 
     public event PropertyChangedEventHandler PropertyChanged;

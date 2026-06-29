@@ -2,7 +2,7 @@
     x:Class="ReciteHelper.Wpf.Views.ProgressWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="创建项目"
+    Title="处理进度"
     Width="720"
     Height="460"
     Background="#F6F8FB"
@@ -43,11 +43,13 @@
 
         <StackPanel Grid.Row="0">
             <TextBlock
+                x:Name="WindowHeadingText"
                 FontSize="22"
                 FontWeight="Bold"
                 Foreground="#172033"
                 Text="正在创建复习项目" />
             <TextBlock
+                x:Name="WindowSubheadingText"
                 Margin="0,6,0,0"
                 FontSize="13"
                 Foreground="#64748B"
@@ -72,7 +74,7 @@
                         Style="{StaticResource StepTextStyle}"
                         Text="1" />
                 </Border>
-                <TextBlock Style="{StaticResource StepLabelStyle}" Text="读取文本" />
+                <TextBlock x:Name="Step1Label" Style="{StaticResource StepLabelStyle}" Text="读取文本" />
             </StackPanel>
 
             <Border
@@ -90,7 +92,7 @@
                         Style="{StaticResource StepTextStyle}"
                         Text="2" />
                 </Border>
-                <TextBlock Style="{StaticResource StepLabelStyle}" Text="知识提取" />
+                <TextBlock x:Name="Step2Label" Style="{StaticResource StepLabelStyle}" Text="知识提取" />
             </StackPanel>
 
             <Border
@@ -108,7 +110,7 @@
                         Style="{StaticResource StepTextStyle}"
                         Text="3" />
                 </Border>
-                <TextBlock Style="{StaticResource StepLabelStyle}" Text="文本聚类" />
+                <TextBlock x:Name="Step3Label" Style="{StaticResource StepLabelStyle}" Text="文本聚类" />
             </StackPanel>
 
             <Border
@@ -126,7 +128,7 @@
                         Style="{StaticResource StepTextStyle}"
                         Text="4" />
                 </Border>
-                <TextBlock Style="{StaticResource StepLabelStyle}" Text="向量生成" />
+                <TextBlock x:Name="Step4Label" Style="{StaticResource StepLabelStyle}" Text="向量生成" />
             </StackPanel>
         </Grid>
 
@@ -201,6 +203,7 @@
         </Border>
 
         <TextBlock
+            x:Name="FooterText"
             Grid.Row="3"
             Margin="0,16,0,0"
             HorizontalAlignment="Center"
