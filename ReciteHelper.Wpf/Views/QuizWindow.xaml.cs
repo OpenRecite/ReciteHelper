@@ -160,6 +160,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         QuestionTextBlock.Text = currentQuestion.Question!.Text;
 
         ConfigureAnswerInput(currentQuestion);
+        AskDeepSeekButton.IsEnabled = currentQuestion.Status != AnswerStatus.NotAnswered;
 
         // Update button state
         PrevButton.IsEnabled = _currentQuestionIndex > 0;
@@ -408,6 +409,74 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         }
     }
 
+    private async void AskDeepSeekButton_Click(object sender, RoutedEventArgs e)
+    {
+        var questionIndex = _currentQuestionIndex;
+        var currentQuestion = _questions[questionIndex];
+        if (currentQuestion.Status == AnswerStatus.NotAnswered)
+        {
+            MessageBox.Show("请先提交答案，再向 DeepSeek 询问题目解析。", "尚未提交答案",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        _helpCancellation?.Cancel();
+        _helpCancellation?.Dispose();
+        _helpCancellation = new CancellationTokenSource();
+        var cancellationToken = _helpCancellation.Token;
+
+        HelpSidebarColumn.Width = new GridLength(360);
+        HelpSidebar.Visibility = Visibility.Visible;
+        KnowledgeMatchesItemsControl.ItemsSource = null;
+        KnowledgeLoadingText.Text = "正在查询本地知识库...";
+        KnowledgeLoadingText.Visibility = Visibility.Visible;
+        AskAiBanner.Visibility = Visibility.Collapsed;
+        AiAnswerPanel.Visibility = Visibility.Visible;
+        AiAnswerText.Text = "正在请求 DeepSeek 生成解析...";
+        AskDeepSeekButton.IsEnabled = false;
+
+        try
+        {
+            var matches = await _questionHelpService.FindMatchesAsync(
+                _project,
+                currentQuestion.Question!,
+                cancellationToken);
+            if (questionIndex != _currentQuestionIndex)
+                return;
+
+            _helpMatches = matches;
+            KnowledgeMatchesItemsControl.ItemsSource = BuildHighlightedMatches(matches, currentQuestion);
+            KnowledgeLoadingText.Text = matches.Count == 0
+                ? "未匹配到本地知识点，将根据题目和答案直接生成解析。"
+                : string.Empty;
+            KnowledgeLoadingText.Visibility = matches.Count == 0
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            var explanation = await _questionHelpService.ExplainAsync(
+                currentQuestion.Question!,
+                currentQuestion.UserAnswer ?? string.Empty,
+                matches,
+                cancellationToken);
+            if (questionIndex == _currentQuestionIndex)
+                AiAnswerText.Text = string.IsNullOrWhiteSpace(explanation)
+                    ? "DeepSeek 未返回有效解析。"
+                    : explanation.Trim();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            AiAnswerText.Text = $"询问 DeepSeek 失败：{ex.Message}";
+        }
+        finally
+        {
+            if (questionIndex == _currentQuestionIndex)
+                AskDeepSeekButton.IsEnabled = currentQuestion.Status != AnswerStatus.NotAnswered;
+        }
+    }
+
     private void CloseHelpSidebar_Click(object sender, RoutedEventArgs e)
     {
         HelpSidebar.Visibility = Visibility.Collapsed;
@@ -637,6 +706,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
 
         // Show result
         ShowResult(currentQuestion);
+        AskDeepSeekButton.IsEnabled = true;
         AnswerTextBox.IsEnabled = false;
         ChoiceOptionsItemsControl.IsEnabled = false;
         FillBlankAnswersItemsControl.IsEnabled = false;

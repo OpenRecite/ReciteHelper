@@ -56,38 +56,76 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         };
         var knowledgeBaseSourceText = string.Empty;
 
-        var firstExtension = Path.GetExtension(copiedQuestionBanks.FirstOrDefault() ?? string.Empty);
-        if (firstExtension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+        if (copiedQuestionBanks.Count > 0 && copiedQuestionBanks.All(IsWebQuestionBank))
         {
-            knowledgeBaseSourceText = ExtractText.FromAutomatic(copiedQuestionBanks[0]);
-            Report(progress, 1, 1, 0, 0, 1, 1, "题库文本读取完成。", ProjectCreationStage.ReadingText);
-            project.Chapters = await ProcessTextAsync(
-                knowledgeBaseSourceText,
-                request.DeepSeekKey,
-                request.MissingStrategy,
-                progress);
-        }
-        else if (firstExtension.Equals(".meg", StringComparison.OrdinalIgnoreCase))
-        {
-            var mergeFile = (MergeFile)ExtractText.FromAutomatic(copiedQuestionBanks[0]);
-            if (mergeFile is null)
-                throw new InvalidOperationException("题库文件已损坏！");
-
-            if (mergeFile.ClusterType == FileClusterType.Sequential)
+            var chapters = new List<Chapter>();
+            var sourceTexts = new List<string>();
+            for (var index = 0; index < copiedQuestionBanks.Count; index++)
             {
-                var result = new List<Chapter>();
-                var round = 1;
-                knowledgeBaseSourceText = string.Join(Environment.NewLine, mergeFile.Contents);
-                foreach (var item in mergeFile.Contents)
-                {
-                    Report(progress, 1, 1, 0, 0, round, mergeFile.Contents.Count, "正在读取合并题库片段...", ProjectCreationStage.ReadingText);
-                    var cluster = await ProcessTextAsync(item, request.DeepSeekKey, request.MissingStrategy, progress);
-                    if (cluster is not null)
-                        result.AddRange(cluster);
-                    round++;
-                }
+                Report(
+                    progress,
+                    index,
+                    copiedQuestionBanks.Count,
+                    0,
+                    copiedQuestionBanks.Count,
+                    index,
+                    copiedQuestionBanks.Count,
+                    $"正在直接解析网页题库 {index + 1}/{copiedQuestionBanks.Count}，无需 DeepSeek。",
+                    ProjectCreationStage.ReadingText);
+                var imported = await XuetangXQuestionBankImporter.ImportAsync(copiedQuestionBanks[index]);
+                imported.Chapter.Number = chapters.Count + 1;
+                chapters.Add(imported.Chapter);
+                sourceTexts.Add(imported.SourceText);
+            }
 
-                project.Chapters = result;
+            project.Chapters = chapters;
+            knowledgeBaseSourceText = string.Join(Environment.NewLine + Environment.NewLine, sourceTexts);
+            Report(
+                progress,
+                copiedQuestionBanks.Count,
+                copiedQuestionBanks.Count,
+                copiedQuestionBanks.Count,
+                copiedQuestionBanks.Count,
+                copiedQuestionBanks.Count,
+                copiedQuestionBanks.Count,
+                $"已直接导入 {chapters.Sum(chapter => chapter.Questions?.Count ?? 0)} 道题，正在生成本地知识库。",
+                ProjectCreationStage.TextClustering);
+        }
+        else
+        {
+            var firstExtension = Path.GetExtension(copiedQuestionBanks.FirstOrDefault() ?? string.Empty);
+            if (firstExtension.Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                knowledgeBaseSourceText = ExtractText.FromAutomatic(copiedQuestionBanks[0]);
+                Report(progress, 1, 1, 0, 0, 1, 1, "题库文本读取完成。", ProjectCreationStage.ReadingText);
+                project.Chapters = await ProcessTextAsync(
+                    knowledgeBaseSourceText,
+                    request.DeepSeekKey,
+                    request.MissingStrategy,
+                    progress);
+            }
+            else if (firstExtension.Equals(".meg", StringComparison.OrdinalIgnoreCase))
+            {
+                var mergeFile = (MergeFile)ExtractText.FromAutomatic(copiedQuestionBanks[0]);
+                if (mergeFile is null)
+                    throw new InvalidOperationException("题库文件已损坏！");
+
+                if (mergeFile.ClusterType == FileClusterType.Sequential)
+                {
+                    var result = new List<Chapter>();
+                    var round = 1;
+                    knowledgeBaseSourceText = string.Join(Environment.NewLine, mergeFile.Contents);
+                    foreach (var item in mergeFile.Contents)
+                    {
+                        Report(progress, 1, 1, 0, 0, round, mergeFile.Contents.Count, "正在读取合并题库片段...", ProjectCreationStage.ReadingText);
+                        var cluster = await ProcessTextAsync(item, request.DeepSeekKey, request.MissingStrategy, progress);
+                        if (cluster is not null)
+                            result.AddRange(cluster);
+                        round++;
+                    }
+
+                    project.Chapters = result;
+                }
             }
         }
 
@@ -102,6 +140,11 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         return new CreateProjectResult(
             project,
             Path.Combine(projectDir, $"{request.ProjectName}.rhproj"));
+    }
+
+    private static bool IsWebQuestionBank(string path)
+    {
+        return Path.GetExtension(path).ToLowerInvariant() is ".html" or ".htm" or ".mhtml" or ".mht";
     }
 
     private async Task BuildKnowledgeBaseAsync(

@@ -44,13 +44,21 @@ public partial class CreateProjectWindow : Window
     {
         var openFileDialog = new OpenFileDialog
         {
-            Filter = "PDF文件 (*.pdf)|*.pdf|合并文件 (*.meg)|*.meg",
-            Title = "添加题库PDF文件"
+            Filter = "题库文件 (*.pdf;*.meg;*.html;*.htm;*.mhtml;*.mht)|*.pdf;*.meg;*.html;*.htm;*.mhtml;*.mht|学堂在线网页 (*.html;*.htm;*.mhtml;*.mht)|*.html;*.htm;*.mhtml;*.mht|PDF文件 (*.pdf)|*.pdf|合并文件 (*.meg)|*.meg",
+            Title = "添加题库文件（网页题库可多选）",
+            Multiselect = true
         };
 
         if (openFileDialog.ShowDialog() == true)
         {
-            QuestionBankTextBox.Text = openFileDialog.FileName;
+            if (openFileDialog.FileNames.Length > 1 && openFileDialog.FileNames.Any(path => !IsWebQuestionBank(path)))
+            {
+                MessageBox.Show("只有 HTML/MHTML 网页题库支持一次选择多个文件。", "文件类型不一致",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            QuestionBankTextBox.Text = string.Join(';', openFileDialog.FileNames);
             ValidateInputs();
             UpdatePreview();
         }
@@ -98,7 +106,7 @@ public partial class CreateProjectWindow : Window
 
         if (string.IsNullOrWhiteSpace(QuestionBankTextBox.Text))
         {
-            ShowValidationError(QuestionBankValidation, "请选择题库PDF文件");
+            ShowValidationError(QuestionBankValidation, "请选择题库文件");
             isValid = false;
         }
         else if (!ValidateQuestionBanks())
@@ -137,11 +145,19 @@ public partial class CreateProjectWindow : Window
 
             var extension = Path.GetExtension(file);
             if (!extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase) &&
-                !extension.Equals(".meg", StringComparison.OrdinalIgnoreCase))
+                !extension.Equals(".meg", StringComparison.OrdinalIgnoreCase) &&
+                !IsWebQuestionBank(file))
             {
-                ShowValidationError(QuestionBankValidation, "请选择PDF或MEG文件");
+                ShowValidationError(QuestionBankValidation, "请选择 PDF、MEG、HTML 或 MHTML 文件");
                 return false;
             }
+        }
+
+        var paths = GetQuestionBankPaths();
+        if (paths.Any(IsWebQuestionBank) && paths.Any(path => !IsWebQuestionBank(path)))
+        {
+            ShowValidationError(QuestionBankValidation, "网页题库不能与 PDF/MEG 混合导入");
+            return false;
         }
 
         return true;
@@ -173,8 +189,11 @@ public partial class CreateProjectWindow : Window
             ProjectPathPreview.Text = "项目文件: 请填写完整信息";
         }
 
-        QuestionBankPreview.Text = !string.IsNullOrWhiteSpace(QuestionBankTextBox.Text)
-            ? $"题库文件: {Path.GetFileName(QuestionBankTextBox.Text)}"
+        var questionBankPaths = GetQuestionBankPaths();
+        QuestionBankPreview.Text = questionBankPaths.Count > 0
+            ? questionBankPaths.Count == 1
+                ? $"题库文件: {Path.GetFileName(questionBankPaths[0])}"
+                : $"题库文件: 已选择 {questionBankPaths.Count} 个网页题库"
             : "题库文件: 未选择";
     }
 
@@ -183,9 +202,11 @@ public partial class CreateProjectWindow : Window
         if (!ConfirmButton.IsEnabled)
             return;
 
-        if (Config.Configure?.DeepSeekKey is null)
+        var questionBankPaths = GetQuestionBankPaths();
+        var needsDeepSeek = questionBankPaths.Any(path => !IsWebQuestionBank(path));
+        if (needsDeepSeek && string.IsNullOrWhiteSpace(Config.Configure?.DeepSeekKey))
         {
-            MessageBox.Show("您还未配置Deepseek...", "提示",
+            MessageBox.Show("PDF/MEG 资料需要 DeepSeek 生成题目；HTML/MHTML 网页题库可直接导入。", "尚未配置 DeepSeek",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -205,9 +226,9 @@ public partial class CreateProjectWindow : Window
             var request = new CreateProjectRequest(
                 ProjectNameTextBox.Text.Trim(),
                 StoragePathTextBox.Text,
-                GetQuestionBankPaths(),
-                Config.Configure.DeepSeekKey,
-                Config.Configure.Strategy);
+                questionBankPaths,
+                Config.Configure?.DeepSeekKey ?? string.Empty,
+                Config.Configure?.Strategy ?? ReciteHelper.Core.Enums.MissingStrategy.Ignore);
 
             var result = await _projectCreationService.CreateAsync(request, progress);
 
@@ -249,6 +270,12 @@ public partial class CreateProjectWindow : Window
         if (string.IsNullOrWhiteSpace(QuestionBankTextBox.Text))
             return;
 
+        if (GetQuestionBankPaths().All(IsWebQuestionBank))
+        {
+            MessageBox.Show("HTML/MHTML 网页题库会直接读取题面、选项和正确答案，创建题库时不调用 DeepSeek。需要解析时可在答题助手中交给 DeepSeek 生成。", "直接导入");
+            return;
+        }
+
         double length;
 
         try
@@ -279,5 +306,10 @@ public partial class CreateProjectWindow : Window
         return QuestionBankTextBox.Text
             .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToList();
+    }
+
+    private static bool IsWebQuestionBank(string path)
+    {
+        return Path.GetExtension(path).ToLowerInvariant() is ".html" or ".htm" or ".mhtml" or ".mht";
     }
 }
