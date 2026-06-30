@@ -232,7 +232,7 @@ public partial class CreateProjectWindow : Window
 
             var result = await _projectCreationService.CreateAsync(request, progress);
 
-            MessageBox.Show("成功了...");
+            MessageBox.Show("项目创建成功");
             _updateRecentProject(result.ProjectPath, result.Project.ProjectName!);
 
             succeeded = true;
@@ -297,7 +297,7 @@ public partial class CreateProjectWindow : Window
             coefficient: {coefficient:F2}
             tokens(pred tot.): {tokens:F0}
 
-            预计价格: {price:F2} 元
+            预计价格: {2*price:F2} 元
             """, "价格预计");
     }
 
