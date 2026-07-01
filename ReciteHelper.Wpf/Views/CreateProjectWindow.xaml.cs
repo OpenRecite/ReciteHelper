@@ -260,7 +260,7 @@ public partial class CreateProjectWindow : Window
         }
         catch
         {
-            MessageBox.Show("价格估计失败，请确保您已经选择文件", "价格估计");
+            MessageBox.Show("估计失败，请确保您已经选择文件", "价格估计");
             return;
         }
 
@@ -268,13 +268,30 @@ public partial class CreateProjectWindow : Window
         var tokens = length * 1.3d * (1d + coefficient);
         var price = length / 1_000_000 * 2.5 + length * coefficient / 1_000_000 * 3 * 2.10d;
 
-        MessageBox.Show($"""
-            texts: {length:F0}
-            coefficient: {coefficient:F2}
-            tokens(pred tot.): {tokens:F0}
+        var addition = string.Empty;
 
-            预计价格: {2*price:F2} 元
-            """, "价格预计");
+        if (DateTime.Now.Hour is > 9 and < 12 or > 14 and < 18)
+        {
+            addition = $"""
+            
+            -------------- 
+            如果您选择等到非峰时时段再创建项目，预计可节省：{price:F2} 元。
+            --------------
+            峰时时段：9:00～12:00 和 14:00～18:00
+            """;
+            price *= 2;
+        }
+
+        var msg = $"""
+                   texts: {length:F0}
+                   coefficient: {coefficient:F2}
+                   tokens(pred tot.): {tokens:F0}
+
+                   预计价格: {price:F2} 元
+                   {addition}
+                   """;
+
+        MessageBox.Show(msg, "价格预计");
     }
 
     private List<string> GetQuestionBankPaths()
