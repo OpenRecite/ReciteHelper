@@ -15,6 +15,8 @@ namespace ReciteHelper.Wpf.Views {
         private readonly IExamPaperService _examPaperService;
         private readonly IExamSettingsService _examSettingsService;
         private readonly IExamSetRepository _examSetRepository;
+        private readonly IProjectCreationService _projectCreationService;
+        private readonly IProjectFileService _projectFileService;
         private Project _project;
         private List<ChapterWeightSetting> _chapterWeights;
         private IReadOnlyList<ExamSet> _examSets = [];
@@ -24,12 +26,16 @@ namespace ReciteHelper.Wpf.Views {
             IExamAnswerService examAnswerService,
             IExamPaperService examPaperService,
             IExamSettingsService examSettingsService,
-            IExamSetRepository examSetRepository)
+            IExamSetRepository examSetRepository,
+            IProjectCreationService projectCreationService,
+            IProjectFileService projectFileService)
         {
             _examAnswerService = examAnswerService;
             _examPaperService = examPaperService;
             _examSettingsService = examSettingsService;
             _examSetRepository = examSetRepository;
+            _projectCreationService = projectCreationService;
+            _projectFileService = projectFileService;
 
             InitializeComponent();
             _project = project;
@@ -298,7 +304,10 @@ namespace ReciteHelper.Wpf.Views {
                 examQuestions,
                 _project.ProjectName!,
                 examSettings,
-                _examAnswerService);
+                _examAnswerService,
+                project: _project,
+                projectCreationService: _projectCreationService,
+                projectFileService: _projectFileService);
             examWindow.Show();
 
             Close();
@@ -324,7 +333,11 @@ namespace ReciteHelper.Wpf.Views {
                 examSettings,
                 _examAnswerService,
                 examSet.Questions,
-                examSet.ResolvedSmallTitle);
+                examSet.ResolvedSmallTitle,
+                _project,
+                _projectCreationService,
+                _projectFileService,
+                isImportedExamSet: true);
             examWindow.Show();
             Close();
         }

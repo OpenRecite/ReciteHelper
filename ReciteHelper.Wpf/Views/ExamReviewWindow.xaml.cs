@@ -1,4 +1,6 @@
 using Microsoft.Win32;
+using ReciteHelper.Core.Aggregates;
+using ReciteHelper.Core.DTOs;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Wpf.Models;
@@ -6,6 +8,7 @@ using ReciteHelper.Wpf.ViewModels;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace ReciteHelper.Wpf.Views;
 
@@ -15,6 +18,9 @@ namespace ReciteHelper.Wpf.Views;
 public partial class ExamReviewWindow : Window, INotifyPropertyChanged
 {
     private readonly IExamAnswerService _examAnswerService;
+    private readonly Project? _project;
+    private readonly IProjectCreationService? _projectCreationService;
+    private readonly IProjectFileService? _projectFileService;
     private List<ExamQuestionItem> _examQuestions;
     private int _totalQuestions;
     private int _correctCount;
@@ -23,9 +29,17 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
     private int _totalScore;
     private double _accuracy;
 
-    public ExamReviewWindow(List<ExamQuestionItem> examQuestions, IExamAnswerService examAnswerService)
+    public ExamReviewWindow(
+        List<ExamQuestionItem> examQuestions,
+        IExamAnswerService examAnswerService,
+        Project? project = null,
+        IProjectCreationService? projectCreationService = null,
+        IProjectFileService? projectFileService = null)
     {
         _examAnswerService = examAnswerService;
+        _project = project;
+        _projectCreationService = projectCreationService;
+        _projectFileService = projectFileService;
 
         InitializeComponent();
         _examQuestions = examQuestions ?? new List<ExamQuestionItem>();
@@ -33,6 +47,9 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
         CalculateStatistics();
         InitializeReviewItems();
         UpdateDisplay();
+        ImportWrongQuestionsButton.Visibility = CanImportWrongQuestions()
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private void CalculateStatistics()
@@ -150,6 +167,149 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         Close();
+    }
+
+    private async void ImportWrongQuestionsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!CanImportWrongQuestions() || _project is null || _projectCreationService is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(Config.Configure.DeepSeekKey))
+        {
+            MessageBox.Show("尚未配置 DeepSeek Key，无法把错题聚类到已有章节。", "无法导入", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var candidates = BuildWrongQuestionCandidates();
+        if (candidates.Count == 0)
+        {
+            MessageBox.Show("本次考试没有可导入的错题。", "无需导入", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var selectionWindow = new WrongQuestionImportWindow(candidates)
+        {
+            Owner = this
+        };
+        if (selectionWindow.ShowDialog() is not true)
+            return;
+
+        var selectedQuestions = selectionWindow.SelectedCandidates
+            .Select(candidate => candidate.Question)
+            .ToList();
+        var progressWindow = new ProgressWindow(ProgressWindowMode.ProjectContentImport)
+        {
+            Owner = this
+        };
+
+        try
+        {
+            IsEnabled = false;
+            progressWindow.Show();
+            await Dispatcher.Yield(DispatcherPriority.Background);
+
+            var progress = new Progress<ProjectCreationProgress>(progressWindow.ApplyProgress);
+            await Task.Run(() => _projectCreationService.ImportQuestionsAsync(
+                _project,
+                selectedQuestions,
+                Config.Configure.DeepSeekKey,
+                progress));
+
+            if (progressWindow.IsVisible)
+                progressWindow.Close();
+
+            MessageBox.Show($"已导入 {selectedQuestions.Count} 道错题，并更新知识库。", "导入完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            ImportWrongQuestionsButton.Visibility = Visibility.Collapsed;
+        }
+        catch (Exception ex)
+        {
+            if (progressWindow.IsVisible)
+                progressWindow.Close();
+            MessageBox.Show($"导入错题失败：{ex.Message}", "导入失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            if (progressWindow.IsVisible)
+                progressWindow.Close();
+            IsEnabled = true;
+        }
+    }
+
+    private bool CanImportWrongQuestions()
+    {
+        return _project is { Chapters.Count: > 0 } &&
+               _projectCreationService is not null &&
+               _examQuestions.Any(question => question.Question is not null &&
+                   !_examAnswerService.IsCorrect(question.Question, question.UserAnswer));
+    }
+
+    private List<WrongQuestionImportCandidate> BuildWrongQuestionCandidates()
+    {
+        var existingQuestions = _project?.ExportQuestions() ?? [];
+        return _examQuestions
+            .Where(item => item.Question is not null && !_examAnswerService.IsCorrect(item.Question, item.UserAnswer))
+            .Select(item =>
+            {
+                var maxSimilarity = existingQuestions
+                    .Where(existing => !ReferenceEquals(existing, item.Question))
+                    .Select(existing => CalculateQuestionSimilarity(existing, item.Question!))
+                    .DefaultIfEmpty(0d)
+                    .Max();
+                var hasSimilar = maxSimilarity >= 0.82d;
+                return new WrongQuestionImportCandidate
+                {
+                    Number = item.Number,
+                    Question = item.Question!,
+                    UserAnswer = FormatUserAnswer(item),
+                    CorrectAnswer = item.Question!.GetCorrectAnswerText(),
+                    HasSimilarQuestion = hasSimilar,
+                    Similarity = maxSimilarity,
+                    IsSelected = !hasSimilar
+                };
+            })
+            .ToList();
+    }
+
+    private static double CalculateQuestionSimilarity(Question left, Question right)
+    {
+        var leftText = NormalizeForSimilarity($"{left.Text} {left.GetCorrectAnswerText()}");
+        var rightText = NormalizeForSimilarity($"{right.Text} {right.GetCorrectAnswerText()}");
+        if (leftText.Length == 0 || rightText.Length == 0)
+            return 0d;
+
+        var distance = LevenshteinDistance(leftText, rightText);
+        return 1d - distance / (double)Math.Max(leftText.Length, rightText.Length);
+    }
+
+    private static string NormalizeForSimilarity(string text)
+    {
+        return new string((text ?? string.Empty)
+            .Where(character => !char.IsWhiteSpace(character) && !char.IsPunctuation(character))
+            .Select(char.ToLowerInvariant)
+            .ToArray());
+    }
+
+    private static int LevenshteinDistance(string left, string right)
+    {
+        var costs = new int[right.Length + 1];
+        for (var j = 0; j <= right.Length; j++)
+            costs[j] = j;
+
+        for (var i = 1; i <= left.Length; i++)
+        {
+            var previous = costs[0];
+            costs[0] = i;
+            for (var j = 1; j <= right.Length; j++)
+            {
+                var current = costs[j];
+                costs[j] = left[i - 1] == right[j - 1]
+                    ? previous
+                    : Math.Min(Math.Min(costs[j - 1], costs[j]), previous) + 1;
+                previous = current;
+            }
+        }
+
+        return costs[right.Length];
     }
 
     private static string FormatUserAnswer(ExamQuestionItem item)

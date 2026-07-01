@@ -1,8 +1,8 @@
 using ReciteHelper.SharedKernel;
 using ReciteHelper.Core.Enums;
+using ReciteHelper.Core.Services;
 using ReciteHelper.Core.ValueObjects;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 
 namespace ReciteHelper.Core.Entities;
 
@@ -80,7 +80,7 @@ public class Question : Entity
 
     [JsonIgnore]
     public int BlankCount => IsFillBlank
-        ? Math.Max(1, Math.Max(GetCorrectAnswers().Count, Regex.Matches(Text ?? string.Empty, @"_{2,}|＿{2,}").Count))
+        ? GetBlankCount()
         : 0;
 
     [JsonIgnore]
@@ -119,6 +119,11 @@ public class Question : Entity
             return CorrectAnswer ?? string.Empty;
 
         return GetOptionDisplayText(correctOptionId);
+    }
+
+    private int GetBlankCount()
+    {
+        return FillBlankTextNormalizer.CountEffectiveMarkers(Text ?? string.Empty, GetCorrectAnswers());
     }
 
     public string GetOptionDisplayText(string? optionId)

@@ -147,8 +147,12 @@
                         <Button.ContextMenu>
                             <ContextMenu x:Name="FunctionMenu">
                                 <MenuItem
+                                    Click="AddQuestionSourceMenuItem_Click"
+                                    Header="增加题目来源"
+                                    Style="{StaticResource MenuItemStyle}" />
+                                <MenuItem
                                     Click="ImportExamMenuItem_Click"
-                                    Header="导入试卷（PDF/TXT）"
+                                    Header="导入试卷（PDF/TXT/HTML/MHTML）"
                                     Style="{StaticResource MenuItemStyle}" />
                                 <MenuItem
                                     Click="ExportMenuItem_Click"

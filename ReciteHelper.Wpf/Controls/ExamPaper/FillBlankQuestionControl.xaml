@@ -4,14 +4,10 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <StackPanel Margin="0,3,0,10">
         <TextBlock
+            x:Name="QuestionTextBlock"
             FontFamily="Times New Roman,SimSun"
             FontSize="16"
             LineHeight="24"
-            TextWrapping="Wrap">
-            <Run x:Name="NumberRun" />
-            <Run x:Name="ScoreRun" FontWeight="Bold" />
-            <Run x:Name="QuestionRun" />
-        </TextBlock>
-        <WrapPanel x:Name="AnswerFieldsPanel" Margin="18,7,0,0" />
+            TextWrapping="Wrap" />
     </StackPanel>
 </UserControl>

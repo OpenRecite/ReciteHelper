@@ -44,21 +44,14 @@ public partial class CreateProjectWindow : Window
     {
         var openFileDialog = new OpenFileDialog
         {
-            Filter = "题库文件 (*.pdf;*.meg;*.html;*.htm;*.mhtml;*.mht)|*.pdf;*.meg;*.html;*.htm;*.mhtml;*.mht|学堂在线网页 (*.html;*.htm;*.mhtml;*.mht)|*.html;*.htm;*.mhtml;*.mht|PDF文件 (*.pdf)|*.pdf|合并文件 (*.meg)|*.meg",
-            Title = "添加题库文件（网页题库可多选）",
-            Multiselect = true
+            Filter = "学习资料 (*.pdf;*.meg)|*.pdf;*.meg|PDF文件 (*.pdf)|*.pdf|合并文件 (*.meg)|*.meg",
+            Title = "添加学习资料",
+            Multiselect = false
         };
 
         if (openFileDialog.ShowDialog() == true)
         {
-            if (openFileDialog.FileNames.Length > 1 && openFileDialog.FileNames.Any(path => !IsWebQuestionBank(path)))
-            {
-                MessageBox.Show("只有 HTML/MHTML 网页题库支持一次选择多个文件。", "文件类型不一致",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            QuestionBankTextBox.Text = string.Join(';', openFileDialog.FileNames);
+            QuestionBankTextBox.Text = openFileDialog.FileName;
             ValidateInputs();
             UpdatePreview();
         }
@@ -145,19 +138,11 @@ public partial class CreateProjectWindow : Window
 
             var extension = Path.GetExtension(file);
             if (!extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase) &&
-                !extension.Equals(".meg", StringComparison.OrdinalIgnoreCase) &&
-                !IsWebQuestionBank(file))
+                !extension.Equals(".meg", StringComparison.OrdinalIgnoreCase))
             {
-                ShowValidationError(QuestionBankValidation, "请选择 PDF、MEG、HTML 或 MHTML 文件");
+                ShowValidationError(QuestionBankValidation, "请选择 PDF 或 MEG 学习资料文件");
                 return false;
             }
-        }
-
-        var paths = GetQuestionBankPaths();
-        if (paths.Any(IsWebQuestionBank) && paths.Any(path => !IsWebQuestionBank(path)))
-        {
-            ShowValidationError(QuestionBankValidation, "网页题库不能与 PDF/MEG 混合导入");
-            return false;
         }
 
         return true;
@@ -191,10 +176,8 @@ public partial class CreateProjectWindow : Window
 
         var questionBankPaths = GetQuestionBankPaths();
         QuestionBankPreview.Text = questionBankPaths.Count > 0
-            ? questionBankPaths.Count == 1
-                ? $"题库文件: {Path.GetFileName(questionBankPaths[0])}"
-                : $"题库文件: 已选择 {questionBankPaths.Count} 个网页题库"
-            : "题库文件: 未选择";
+            ? $"学习资料: {Path.GetFileName(questionBankPaths[0])}"
+            : "学习资料: 未选择";
     }
 
     private async void ConfirmButton_Click(object sender, RoutedEventArgs e)
@@ -203,10 +186,9 @@ public partial class CreateProjectWindow : Window
             return;
 
         var questionBankPaths = GetQuestionBankPaths();
-        var needsDeepSeek = questionBankPaths.Any(path => !IsWebQuestionBank(path));
-        if (needsDeepSeek && string.IsNullOrWhiteSpace(Config.Configure?.DeepSeekKey))
+        if (string.IsNullOrWhiteSpace(Config.Configure?.DeepSeekKey))
         {
-            MessageBox.Show("PDF/MEG 资料需要 DeepSeek 生成题目；HTML/MHTML 网页题库可直接导入。", "尚未配置 DeepSeek",
+            MessageBox.Show("创建项目需要 DeepSeek 从学习资料中生成知识点和题目。", "尚未配置 DeepSeek",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -270,12 +252,6 @@ public partial class CreateProjectWindow : Window
         if (string.IsNullOrWhiteSpace(QuestionBankTextBox.Text))
             return;
 
-        if (GetQuestionBankPaths().All(IsWebQuestionBank))
-        {
-            MessageBox.Show("HTML/MHTML 网页题库会直接读取题面、选项和正确答案，创建题库时不调用 DeepSeek。需要解析时可在答题助手中交给 DeepSeek 生成。", "直接导入");
-            return;
-        }
-
         double length;
 
         try
@@ -306,10 +282,5 @@ public partial class CreateProjectWindow : Window
         return QuestionBankTextBox.Text
             .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToList();
-    }
-
-    private static bool IsWebQuestionBank(string path)
-    {
-        return Path.GetExtension(path).ToLowerInvariant() is ".html" or ".htm" or ".mhtml" or ".mht";
     }
 }

@@ -303,6 +303,7 @@ public partial class MainWindow : Window
                 _examSettingsService,
                 _examSetImportService,
                 _examSetRepository,
+                _projectCreationService,
                 _galGameService,
                 _questionHelpService);
             quizWindow.Show();

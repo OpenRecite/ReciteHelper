@@ -156,9 +156,9 @@ Select "Mock Exam" in the chapter selection window to open the exam settings pag
 
 ![Exam settings](Resources/08-exam-setting.png)
 
-You can configure the course number, duration, question count, and selection weight for each chapter. Weights do not need to total 100%; ReciteHelper normalizes them automatically. Scores are fixed at 3 points for choice, 1 per blank, 1 for true/false, 4 for term definitions, and 5 for essays.
+You can configure the course number, duration, question count, and selection weight for each chapter. Weights do not need to total 100%; ReciteHelper normalizes them automatically. Generated exams use fixed scores: 3 points for choice, 1 per blank, 1 for true/false, 4 for term definitions, and 5 for essays.
 
-The function menu can import PDF or TXT exam files. DeepSeek separates files containing multiple papers and generates answers and explanations; papers are stored under the project's `exams` directory. Enable "Load Exam Set" in mock-exam settings to use one, which disables automatic paper-generation settings. The `small_title` and `main_title` fields in each exam-set JSON customize the two printed titles.
+The function menu can import PDF, TXT, HTML, or MHTML exam files. DeepSeek separates files containing multiple papers and generates answers and explanations; papers are stored under the project's `exams` directory. Enable "Load Exam Set" in mock-exam settings to use one, which disables automatic paper-generation settings. Imported exam sets keep the original section or question scores when they can be identified, and only fall back to default type scores when the source has no usable score information. The `small_title` and `main_title` fields in each exam-set JSON customize the two printed titles.
 
 Accept the exam rules to begin. Submit the paper after answering to see the score and response statistics.
 

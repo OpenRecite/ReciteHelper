@@ -7,8 +7,8 @@
     xmlns:local="clr-namespace:ReciteHelper.Wpf"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="考试答案回顾"
-    Width="900"
-    Height="700"
+    Width="1120"
+    Height="760"
     Background="#F5F7F9"
     WindowStartupLocation="CenterOwner"
     mc:Ignorable="d">
@@ -170,38 +170,48 @@
                                         TextWrapping="Wrap" />
                                 </StackPanel>
 
-                                <StackPanel
+                                <Border
                                     Grid.Row="2"
                                     Margin="0,0,0,4"
-                                    Orientation="Horizontal">
-                                    <TextBlock
-                                        MinWidth="80"
-                                        FontWeight="SemiBold"
-                                        Foreground="#495057"
-                                        Text="您的答案：" />
-                                    <TextBlock
-                                        FontSize="13"
-                                        Foreground="#333333"
-                                        Text="{Binding UserAnswer}"
-                                        TextWrapping="Wrap" />
-                                </StackPanel>
+                                    Padding="12"
+                                    Background="#F8FAFC"
+                                    CornerRadius="6">
+                                    <StackPanel>
+                                        <TextBlock
+                                            FontWeight="SemiBold"
+                                            Foreground="#495057"
+                                            Text="您的答案" />
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="13"
+                                            Foreground="#333333"
+                                            LineHeight="20"
+                                            Text="{Binding UserAnswer}"
+                                            TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
 
-                                <StackPanel
+                                <Border
                                     Grid.Row="3"
-                                    Margin="0,0,0,4"
-                                    Orientation="Horizontal">
-                                    <TextBlock
-                                        MinWidth="80"
-                                        FontWeight="SemiBold"
-                                        Foreground="#495057"
-                                        Text="正确答案：" />
-                                    <TextBlock
-                                        FontSize="13"
-                                        FontWeight="SemiBold"
-                                        Foreground="#28A745"
-                                        Text="{Binding CorrectAnswer}"
-                                        TextWrapping="Wrap" />
-                                </StackPanel>
+                                    Margin="0,8,0,4"
+                                    Padding="12"
+                                    Background="#F0FDF4"
+                                    CornerRadius="6">
+                                    <StackPanel>
+                                        <TextBlock
+                                            FontWeight="SemiBold"
+                                            Foreground="#15803D"
+                                            Text="正确答案" />
+                                        <TextBlock
+                                            Margin="0,5,0,0"
+                                            FontSize="13"
+                                            FontWeight="SemiBold"
+                                            Foreground="#166534"
+                                            LineHeight="20"
+                                            Text="{Binding CorrectAnswer}"
+                                            TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
 
                                 <StackPanel
                                     Grid.Row="4"
@@ -215,9 +225,8 @@
                                         Text="解析：" />
                                     <TextBlock
                                         FontSize="12"
-                                        FontStyle="Italic"
                                         Foreground="#666666"
-                                        LineHeight="18"
+                                        LineHeight="20"
                                         Text="{Binding Explanation}"
                                         TextWrapping="Wrap" />
                                 </StackPanel>
@@ -300,6 +309,13 @@
                     Grid.Column="1"
                     Margin="0,0,20,0"
                     Orientation="Horizontal">
+                    <Button
+                        x:Name="ImportWrongQuestionsButton"
+                        Margin="0,0,12,0"
+                        Click="ImportWrongQuestionsButton_Click"
+                        Content="导入错题"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Visibility="Collapsed" />
                     <Button
                         Click="ExportReportButton_Click"
                         Content="导出报告"

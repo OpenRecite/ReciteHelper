@@ -23,6 +23,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
     private readonly IExamSettingsService _examSettingsService;
     private readonly IExamSetImportService _examSetImportService;
     private readonly IExamSetRepository _examSetRepository;
+    private readonly IProjectCreationService _projectCreationService;
     private readonly IGalGameService _galGameService;
     private readonly IQuestionHelpService _questionHelpService;
     private Project? _currentProject;
@@ -39,6 +40,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
         IExamSettingsService examSettingsService,
         IExamSetImportService examSetImportService,
         IExamSetRepository examSetRepository,
+        IProjectCreationService projectCreationService,
         IGalGameService galGameService,
         IQuestionHelpService questionHelpService)
     {
@@ -50,6 +52,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
         _examSettingsService = examSettingsService;
         _examSetImportService = examSetImportService;
         _examSetRepository = examSetRepository;
+        _projectCreationService = projectCreationService;
         _galGameService = galGameService;
         _questionHelpService = questionHelpService;
 
@@ -166,7 +169,9 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
             _examAnswerService,
             _examPaperService,
             _examSettingsService,
-            _examSetRepository);
+            _examSetRepository,
+            _projectCreationService,
+            _projectFileService);
 
         examWindow.Show();
         Close();
@@ -260,6 +265,68 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
                 progressWindow.Close();
             SetExamImportState(false);
             UpdateDisplay();
+        }
+    }
+
+    private async void AddQuestionSourceMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentProject is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(Config.Configure.DeepSeekKey))
+        {
+            MessageBox.Show("尚未配置 DeepSeek Key，无法从新资料中生成题目。", "无法导入", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Title = "选择要增加的题目来源",
+            Filter = "学习资料 (*.pdf;*.meg)|*.pdf;*.meg|PDF 文件 (*.pdf)|*.pdf|合并文件 (*.meg)|*.meg",
+            Multiselect = true,
+            CheckFileExists = true
+        };
+        if (dialog.ShowDialog(this) is not true)
+            return;
+
+        var progressWindow = new ProgressWindow(ProgressWindowMode.ProjectContentImport)
+        {
+            Owner = this
+        };
+        SetExamImportState(true);
+        try
+        {
+            progressWindow.Show();
+            await Dispatcher.Yield(DispatcherPriority.Background);
+
+            var progress = new Progress<ProjectCreationProgress>(progressWindow.ApplyProgress);
+            await Task.Run(() => _projectCreationService.AppendSourcesAsync(
+                _currentProject,
+                dialog.FileNames,
+                Config.Configure.DeepSeekKey,
+                Config.Configure.Strategy,
+                progress));
+
+            if (progressWindow.IsVisible)
+                progressWindow.Close();
+
+            InitializeData();
+            UpdateDisplay();
+            ChaptersItemsControl.ItemsSource = _chapters;
+            ChaptersItemsControl.Items.Refresh();
+            MessageBox.Show("新的题目来源已经导入项目，知识库也已更新。", "导入完成", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            if (progressWindow.IsVisible)
+                progressWindow.Close();
+            MessageBox.Show($"增加题目来源失败：{ex.Message}", "导入失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            if (progressWindow.IsVisible)
+                progressWindow.Close();
+            SetExamImportState(false);
         }
     }
 

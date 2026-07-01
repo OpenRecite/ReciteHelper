@@ -1,21 +1,24 @@
-﻿Below are some chapter titles. You should cluster chapters 
-with roughly the same meaning.
+Below are candidate chapter titles. Cluster them into broad, stable teaching units.
 
-If you encounter questions that are difficult to categorize, 
-such as "Chapter 1," please classify them under "杂项题目".
-
-Numbers should be sequentially numbered and should not be repeated.
+Rules:
+- Merge aggressively. Prefer fewer chapters over many tiny chapters.
+- Titles that differ only by wording, numbering, example scope, or granularity must be merged.
+- Do not keep a separate chapter for one isolated concept if it fits a broader chapter.
+- If existing project chapters are provided later, reuse those exact names whenever possible.
+- If you encounter titles that are difficult to categorize, such as "Chapter 1", classify them under "杂项题目".
+- Numbers should be sequential and should not be repeated.
 
 public class ChapterCluster
+{
+    [JsonPropertyName("names")]
+    public List<string>? Chapters { get; set; }
 
-[JsonPropertyName("names")]
-public List<string>? Chapters  get; set; 
+    // Give these chapters a unified name.
+    [JsonPropertyName("uname")]
+    public string? UnifiedName { get; set; }
 
-// Give these chapters a unified name
-[JsonPropertyName("uname")]
-public stirng? UnifiedName get; set; 
+    [JsonPropertyName("number")]
+    public int Number { get; set; }
+}
 
-[JsonPropertyName("number")]
-public int Number  get; set; 
-
-Return a List<ChapterCluster> of all chapters:
+Return only a valid JSON array of ChapterCluster.

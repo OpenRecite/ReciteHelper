@@ -1,3 +1,4 @@
+using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Enums;
 using ReciteHelper.Core.Interfaces.Services;
@@ -20,6 +21,9 @@ public partial class ExamWindow : Window
     private const double PaginationSafetyMargin = 4d;
 
     private readonly IExamAnswerService _examAnswerService;
+    private readonly Project? _project;
+    private readonly IProjectCreationService? _projectCreationService;
+    private readonly IProjectFileService? _projectFileService;
     private readonly ExamSettings _settings;
     private readonly string _examName;
     private readonly string? _paperTitle;
@@ -31,6 +35,7 @@ public partial class ExamWindow : Window
     private TimeSpan _timeRemaining;
     private bool _isExamActive;
     private bool _isSubmitted;
+    private readonly bool _isImportedExamSet;
 
     public ExamWindow(
         List<Question> questions,
@@ -38,12 +43,20 @@ public partial class ExamWindow : Window
         ExamSettings settings,
         IExamAnswerService examAnswerService,
         IReadOnlyList<ExamSetQuestion>? examSetQuestions = null,
-        string? paperTitle = null)
+        string? paperTitle = null,
+        Project? project = null,
+        IProjectCreationService? projectCreationService = null,
+        IProjectFileService? projectFileService = null,
+        bool isImportedExamSet = false)
     {
         _examAnswerService = examAnswerService;
+        _project = project;
+        _projectCreationService = projectCreationService;
+        _projectFileService = projectFileService;
         _settings = settings;
         _examName = examName;
         _paperTitle = paperTitle;
+        _isImportedExamSet = isImportedExamSet;
         _timeRemaining = TimeSpan.FromMinutes(settings.ExamTimeMinutes);
         _examTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _examTimer.Tick += ExamTimer_Tick;
@@ -297,7 +310,10 @@ public partial class ExamWindow : Window
     {
         var blanks = questions.Sum(question => Math.Max(1, question.Question?.BlankCount ?? 1));
         var score = questions.Sum(question => question.Score);
-        return $"本大题共{questions.Count}小题，合计{blanks}空，每空1分，满分{score}分。请将答案填写在相应横线上。";
+        var scoreText = score == blanks
+            ? $"合计{blanks}空，每空1分"
+            : $"合计{blanks}空，按原卷分值计分";
+        return $"本大题共{questions.Count}小题，{scoreText}，满分{score}分。请将答案填写在相应横线上。";
     }
 
     private static string CreateTrueFalseSectionDescription(IReadOnlyList<ExamQuestionItem> questions)
@@ -559,7 +575,12 @@ public partial class ExamWindow : Window
 
     private void ReviewAnswersButton_Click(object sender, RoutedEventArgs e)
     {
-        var reviewWindow = new ExamReviewWindow(_questions.ToList(), _examAnswerService)
+        var reviewWindow = new ExamReviewWindow(
+            _questions.ToList(),
+            _examAnswerService,
+            _isImportedExamSet ? _project : null,
+            _isImportedExamSet ? _projectCreationService : null,
+            _isImportedExamSet ? _projectFileService : null)
         {
             Owner = this
         };

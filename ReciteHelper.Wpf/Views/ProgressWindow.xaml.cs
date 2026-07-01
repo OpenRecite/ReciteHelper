@@ -34,6 +34,12 @@ public partial class ProgressWindow : Window, INotifyPropertyChanged
             ApplyExamStage(ExamSetImportStage.ReadingSource, "正在读取所选试卷文件。");
             SetProgress(0, 1, true, "文件读取");
         }
+        else if (mode == ProgressWindowMode.ProjectContentImport)
+        {
+            ConfigureProjectContentImportMode();
+            ApplyStage(ProjectCreationStage.ReadingText, "正在读取新的资料，随后将提取知识点和题目。");
+            SetProgress(0, 1, true, "读取进度");
+        }
         else
         {
             ApplyStage(ProjectCreationStage.ReadingText, "正在读取题库文件，随后将进入知识提取。");
@@ -131,6 +137,18 @@ public partial class ProgressWindow : Window, INotifyPropertyChanged
         Step4Label.Text = "保存套卷";
         FooterText.Text = "试卷较多时可能需要几分钟，窗口会保持响应。";
         SetVisualStage(1);
+    }
+
+    private void ConfigureProjectContentImportMode()
+    {
+        Title = "导入内容";
+        WindowHeadingText.Text = "正在导入内容";
+        WindowSubheadingText.Text = "AI 将从资料或错题中提取题目，并归并到现有章节与知识库。";
+        Step1Label.Text = "读取资料";
+        Step2Label.Text = "知识提取";
+        Step3Label.Text = "章节归并";
+        Step4Label.Text = "知识库更新";
+        FooterText.Text = "导入期间窗口会保持响应，完成后项目会自动保存。";
     }
 
     private void ApplyExamStage(ExamSetImportStage stage, string? label)
@@ -261,5 +279,6 @@ public partial class ProgressWindow : Window, INotifyPropertyChanged
 public enum ProgressWindowMode
 {
     ProjectCreation,
-    ExamSetImport
+    ExamSetImport,
+    ProjectContentImport
 }

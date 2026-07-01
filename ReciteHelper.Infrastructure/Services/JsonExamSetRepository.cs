@@ -48,7 +48,13 @@ public sealed class JsonExamSetRepository : IExamSetRepository
                 if (examSet is { Questions.Count: > 0 })
                 {
                     foreach (var question in examSet.Questions)
-                        question.Score = question.Question.DefaultExamScore;
+                    {
+                        if (question.Score <= 0)
+                            question.Score = question.Question.DefaultExamScore;
+                        if (question.Question.IsFillBlank && question.Score < question.Question.BlankCount)
+                            question.Score = question.Question.BlankCount;
+                    }
+
                     results.Add(examSet);
                 }
             }

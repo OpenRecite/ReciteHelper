@@ -160,7 +160,7 @@
                 <TextBlock
                     FontWeight="SemiBold"
                     Foreground="#333333"
-                    Text="题库文件（PDF、MEG 等）" />
+                    Text="学习资料（PDF、MEG）" />
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -172,7 +172,7 @@
                         Background="#F8F8F8"
                         IsReadOnly="True"
                         Style="{StaticResource ModernTextBox}"
-                        ToolTip="PDF/MEG 将由 DeepSeek 生成题目；学堂在线 HTML/MHTML 会直接导入现成题目，可多选" />
+                        ToolTip="DeepSeek 将从 PDF/MEG 学习资料中生成知识点和题目；试卷请在项目内通过导入套卷处理" />
                     <Button
                         x:Name="BrowseQuestionBankButton"
                         Grid.Column="1"
