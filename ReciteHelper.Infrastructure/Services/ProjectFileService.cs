@@ -1,8 +1,7 @@
+using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.DTOs;
 using ReciteHelper.Core.Interfaces.Services;
-using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.ValueObjects;
-using ReciteHelper.Infrastructure.Utilities;
 using System.IO.Compression;
 using System.Text.Json;
 
@@ -55,118 +54,98 @@ public sealed class ProjectFileService : IProjectFileService
         await File.WriteAllTextAsync(projectPath, json);
     }
 
-    public async Task<ImportedProject> ImportProjectArchiveAsync(string archivePath)
+    public async Task<ImportedProject> ImportProjectArchiveAsync(string archivePath, string destinationDirectory)
     {
-        var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-        var tempFolder = Path.Combine(baseDirectory, "temp");
+        if (!File.Exists(archivePath))
+            throw new FileNotFoundException("找不到项目包文件。", archivePath);
+        if (!Path.GetExtension(archivePath).Equals(".rhp", StringComparison.OrdinalIgnoreCase))
+            throw new NotSupportedException("项目包必须是 .rhp 文件。");
+        if (string.IsNullOrWhiteSpace(destinationDirectory))
+            throw new ArgumentException("导入目录不能为空。", nameof(destinationDirectory));
 
-        Directory.CreateDirectory(tempFolder);
-        Directory.Clear(tempFolder);
-        ZipFile.ExtractToDirectory(archivePath, tempFolder);
+        Directory.CreateDirectory(destinationDirectory);
 
-        var manifestPath = Path.Combine(tempFolder, "manifest.json");
-        await using var manifestStream = File.OpenRead(manifestPath);
-        var manifest = await JsonSerializer.DeserializeAsync<Manifest>(manifestStream);
+        var packageName = SanitizeFileName(Path.GetFileNameWithoutExtension(archivePath));
+        var destinationRoot = GetUniqueDirectoryPath(Path.Combine(destinationDirectory, packageName));
+        Directory.CreateDirectory(destinationRoot);
 
-        if (manifest?.ProjectFile is null)
-            throw new ArgumentException("Incomplete manifest file.");
-
-        var importedFileName = manifest.ProjectFile.Replace("_exp", "");
-        var exactFolder = Path.Combine(baseDirectory, "imports", Path.GetFileNameWithoutExtension(manifest.ProjectFile));
-        Directory.CreateDirectory(exactFolder);
-
-        var sourcePath = Path.Combine(tempFolder, manifest.ProjectFile);
-        var destinationPath = Path.Combine(exactFolder, importedFileName);
-        File.Copy(sourcePath, destinationPath, true);
-
-        if (!string.IsNullOrWhiteSpace(manifest.KnowledgeBaseFile))
+        try
         {
-            var sourceKnowledgeBasePath = Path.Combine(tempFolder, manifest.KnowledgeBaseFile);
-            if (File.Exists(sourceKnowledgeBasePath))
+            ZipFile.ExtractToDirectory(archivePath, destinationRoot);
+            var projectPath = FindImportedProjectFile(destinationRoot);
+            var project = await OpenProjectFileWithoutKnowledgeBaseAsync(projectPath)
+                ?? throw new InvalidDataException("项目包中的项目文件无法读取。");
+
+            project.StoragePath = destinationDirectory;
+            project.ProjectName = Path.GetFileName(destinationRoot);
+
+            var normalizedProjectPath = Path.Combine(destinationRoot, $"{project.ProjectName}.rhproj");
+            if (!PathsEqual(projectPath, normalizedProjectPath))
             {
-                var destinationKnowledgeBasePath = Path.Combine(exactFolder, Path.GetFileName(manifest.KnowledgeBaseFile));
-                File.Copy(sourceKnowledgeBasePath, destinationKnowledgeBasePath, true);
+                if (File.Exists(normalizedProjectPath))
+                    File.Delete(normalizedProjectPath);
+                File.Move(projectPath, normalizedProjectPath);
+                projectPath = normalizedProjectPath;
             }
+
+            await SaveProjectAsync(project);
+            return new ImportedProject(projectPath, project.ProjectName);
         }
-
-        var sourceExamsDirectory = Path.Combine(tempFolder, "exams");
-        if (Directory.Exists(sourceExamsDirectory))
-            CopyDirectory(sourceExamsDirectory, Path.Combine(exactFolder, "exams"));
-
-        return new ImportedProject(destinationPath, importedFileName);
+        catch
+        {
+            TryDeleteDirectory(destinationRoot);
+            throw;
+        }
     }
 
-    public async Task<string> ExportProjectArchiveAsync(Project project, string? version)
+    public async Task<string> ExportProjectArchiveAsync(Project project, string destinationArchivePath, string? version)
     {
         if (project.StoragePath is null || project.ProjectName is null)
             throw new ArgumentException("Project storage path or project name is missing.");
+        if (string.IsNullOrWhiteSpace(destinationArchivePath))
+            throw new ArgumentException("导出文件路径不能为空。", nameof(destinationArchivePath));
 
         var folderPath = Path.Combine(project.StoragePath, project.ProjectName);
-        var outputFolderPath = Path.Combine(folderPath, "output");
-        Directory.CreateDirectory(outputFolderPath);
-        Directory.Clear(outputFolderPath);
+        if (!Directory.Exists(folderPath))
+            throw new DirectoryNotFoundException($"项目文件夹不存在：{folderPath}");
 
-        var exportProjectFileName = $"{project.ProjectName}_exp.rhproj";
-        var manifest = Manifest.Create(
-            project.QuestionBankPath,
-            version,
-            exportProjectFileName,
-            project.KnowledgeBasePath);
+        var archivePath = Path.ChangeExtension(destinationArchivePath, ".rhp");
+        Directory.CreateDirectory(Path.GetDirectoryName(archivePath)!);
 
-        var manifestString = JsonSerializer.Serialize(
-            manifest,
-            new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(Path.Combine(outputFolderPath, "manifest.json"), manifestString);
+        await SaveProjectAsync(project);
 
-        var sourceProjectPath = Path.Combine(folderPath, $"{project.ProjectName}.rhproj");
-        var exportProjectPath = Path.Combine(outputFolderPath, exportProjectFileName);
-        File.Copy(sourceProjectPath, exportProjectPath, true);
-
-        if (!string.IsNullOrWhiteSpace(project.KnowledgeBasePath))
+        var tempFolder = Path.Combine(Path.GetTempPath(), "ReciteHelperExport", $"{Guid.NewGuid():N}");
+        try
         {
-            var sourceKnowledgeBasePath = ResolveProjectRelativePath(sourceProjectPath, project.KnowledgeBasePath);
-            if (File.Exists(sourceKnowledgeBasePath))
+            Directory.CreateDirectory(tempFolder);
+            CopyDirectory(folderPath, tempFolder, path => ShouldExportPath(path, folderPath, archivePath));
+
+            var manifest = new ProjectPackageManifest
             {
-                var exportKnowledgeBasePath = Path.Combine(outputFolderPath, Path.GetFileName(project.KnowledgeBasePath));
-                File.Copy(sourceKnowledgeBasePath, exportKnowledgeBasePath, true);
-            }
+                Version = version,
+                ProjectFile = $"{project.ProjectName}.rhproj",
+                ProjectName = project.ProjectName,
+                ExportedAtUtc = DateTime.UtcNow
+            };
+            await File.WriteAllTextAsync(
+                Path.Combine(tempFolder, "manifest.json"),
+                JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+
+            if (File.Exists(archivePath))
+                File.Delete(archivePath);
+            ZipFile.CreateFromDirectory(tempFolder, archivePath, CompressionLevel.Optimal, false);
+            return archivePath;
         }
-
-        var sourceExamsDirectory = Path.Combine(folderPath, "exams");
-        if (Directory.Exists(sourceExamsDirectory))
-            CopyDirectory(sourceExamsDirectory, Path.Combine(outputFolderPath, "exams"));
-
-        await ResetExportedAnswerStatusAsync(exportProjectPath);
-
-        var archivePath = Path.Combine(folderPath, "rh_output.zip");
-        if (File.Exists(archivePath))
-            File.Delete(archivePath);
-
-        await ZipFile.CreateFromDirectoryAsync(outputFolderPath, archivePath);
-        return archivePath;
+        finally
+        {
+            TryDeleteDirectory(tempFolder);
+        }
     }
 
-    private static async Task ResetExportedAnswerStatusAsync(string exportProjectPath)
+    private static async Task<Project?> OpenProjectFileWithoutKnowledgeBaseAsync(string projectPath)
     {
-        Project? project;
-        await using (var readStream = File.OpenRead(exportProjectPath))
-        {
-            project = await JsonSerializer.DeserializeAsync<Project>(readStream);
-        }
-
-        if (project?.Chapters is null)
-            return;
-
-        foreach (var chapter in project.Chapters)
-        {
-            if (chapter.Questions is null)
-                continue;
-
-            chapter.Questions.ForEach(question => question.Status = null);
-        }
-
-        var clearText = JsonSerializer.Serialize(project, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(exportProjectPath, clearText);
+        await using var stream = File.OpenRead(projectPath);
+        return await JsonSerializer.DeserializeAsync<Project>(stream);
     }
 
     private static string ResolveProjectRelativePath(string projectPath, string path)
@@ -176,19 +155,115 @@ public sealed class ProjectFileService : IProjectFileService
             : Path.Combine(Path.GetDirectoryName(projectPath)!, path);
     }
 
-    private static void CopyDirectory(string sourceDirectory, string destinationDirectory)
+    private static string FindImportedProjectFile(string rootDirectory)
+    {
+        var files = Directory.EnumerateFiles(rootDirectory, "*.rhproj", SearchOption.AllDirectories)
+            .Where(path => !IsInsideDirectory(path, Path.Combine(rootDirectory, "output")))
+            .ToList();
+        return files.Count switch
+        {
+            0 => throw new InvalidDataException("项目包中没有找到 .rhproj 项目文件。"),
+            1 => files[0],
+            _ => files.FirstOrDefault(path =>
+                    Path.GetDirectoryName(path)?.Equals(rootDirectory, StringComparison.OrdinalIgnoreCase) is true)
+                ?? throw new InvalidDataException("项目包中包含多个 .rhproj 文件，无法确定主项目文件。")
+        };
+    }
+
+    private static void CopyDirectory(
+        string sourceDirectory,
+        string destinationDirectory,
+        Func<string, bool>? shouldCopy = null)
     {
         Directory.CreateDirectory(destinationDirectory);
         foreach (var filePath in Directory.EnumerateFiles(sourceDirectory))
         {
+            if (shouldCopy is not null && !shouldCopy(filePath))
+                continue;
+
             var destinationPath = Path.Combine(destinationDirectory, Path.GetFileName(filePath));
             File.Copy(filePath, destinationPath, true);
         }
 
         foreach (var childDirectory in Directory.EnumerateDirectories(sourceDirectory))
         {
+            if (shouldCopy is not null && !shouldCopy(childDirectory))
+                continue;
+
             var childDestination = Path.Combine(destinationDirectory, Path.GetFileName(childDirectory));
-            CopyDirectory(childDirectory, childDestination);
+            CopyDirectory(childDirectory, childDestination, shouldCopy);
         }
+    }
+
+    private static bool ShouldExportPath(string path, string projectFolder, string archivePath)
+    {
+        if (PathsEqual(path, archivePath))
+            return false;
+
+        var outputDirectory = Path.Combine(projectFolder, "output");
+        return !IsInsideDirectory(path, outputDirectory);
+    }
+
+    private static bool IsInsideDirectory(string path, string directory)
+    {
+        var fullPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var fullDirectory = Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return fullPath.Equals(fullDirectory, StringComparison.OrdinalIgnoreCase) ||
+            fullPath.StartsWith(fullDirectory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetUniqueDirectoryPath(string directoryPath)
+    {
+        if (!Directory.Exists(directoryPath) && !File.Exists(directoryPath))
+            return directoryPath;
+
+        for (var index = 1; index < 1000; index++)
+        {
+            var candidate = $"{directoryPath} ({index})";
+            if (!Directory.Exists(candidate) && !File.Exists(candidate))
+                return candidate;
+        }
+
+        throw new IOException("无法创建唯一的导入目录。");
+    }
+
+    private static string SanitizeFileName(string name)
+    {
+        var invalidCharacters = Path.GetInvalidFileNameChars().ToHashSet();
+        var sanitized = new string(name
+            .Select(character => invalidCharacters.Contains(character) ? '_' : character)
+            .ToArray())
+            .Trim();
+
+        return string.IsNullOrWhiteSpace(sanitized) ? "ReciteHelperProject" : sanitized;
+    }
+
+    private static bool PathsEqual(string first, string second)
+    {
+        return string.Equals(
+            Path.GetFullPath(first).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+            Path.GetFullPath(second).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void TryDeleteDirectory(string directory)
+    {
+        try
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, true);
+        }
+        catch
+        {
+            // Best-effort cleanup only; the original import/export error is more useful to the caller.
+        }
+    }
+
+    private sealed class ProjectPackageManifest
+    {
+        public string? Version { get; set; }
+        public string? ProjectFile { get; set; }
+        public string? ProjectName { get; set; }
+        public DateTime ExportedAtUtc { get; set; }
     }
 }

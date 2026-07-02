@@ -365,17 +365,31 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
         if (_currentProject is null)
             return;
 
+        var saveFileDialog = new SaveFileDialog
+        {
+            Title = "导出 ReciteHelper 项目包",
+            Filter = "ReciteHelper项目包 (*.rhp)|*.rhp",
+            FileName = $"{_currentProject.ProjectName}.rhp",
+            AddExtension = true,
+            DefaultExt = ".rhp",
+            OverwritePrompt = true
+        };
+
+        if (saveFileDialog.ShowDialog() != true)
+            return;
+
         try
         {
             var archivePath = await _projectFileService.ExportProjectArchiveAsync(
                 _currentProject,
+                saveFileDialog.FileName,
                 Config.Configure?.Version);
             var folderPath = Path.GetDirectoryName(archivePath);
 
             if (folderPath is not null)
                 System.Diagnostics.Process.Start("explorer.exe", folderPath);
 
-            MessageBox.Show("已导出至rh_output.zip。");
+            MessageBox.Show($"项目已导出：\n{archivePath}", "导出完成", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {

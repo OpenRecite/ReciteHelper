@@ -254,21 +254,40 @@ public partial class MainWindow : Window
 
     private async void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog();
+        var dialog = new OpenFileDialog
+        {
+            Title = "选择 ReciteHelper 项目包",
+            Filter = "ReciteHelper项目包 (*.rhp)|*.rhp",
+            Multiselect = false
+        };
 
         if (dialog.ShowDialog() != true)
             return;
 
+        var folderDialog = new OpenFolderDialog
+        {
+            Title = "选择项目导入后的存放目录"
+        };
+
+        if (folderDialog.ShowDialog() != true)
+            return;
+
         try
         {
-            var importedProject = await _projectFileService.ImportProjectArchiveAsync(dialog.FileName);
+            var importedProject = await _projectFileService.ImportProjectArchiveAsync(
+                dialog.FileName,
+                folderDialog.FolderName);
             await AddRecentProjectAsync(importedProject.ProjectPath, importedProject.ProjectName);
 
-            MessageBox.Show("项目导入成功", "导入成功", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(
+                $"项目导入成功：\n{importedProject.ProjectPath}",
+                "导入成功",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"文件类型不正确或已损坏。\n详细信息：{ex.Message}",
+            MessageBox.Show($"项目包无法导入。\n详细信息：{ex.Message}",
                 "导入失败", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }

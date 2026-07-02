@@ -7,7 +7,7 @@ public interface IProjectFileService
 {
     Task<Project?> OpenProjectAsync(string projectPath);
     Task SaveProjectAsync(Project project);
-    Task<ImportedProject> ImportProjectArchiveAsync(string archivePath);
-    Task<string> ExportProjectArchiveAsync(Project project, string? version);
+    Task<ImportedProject> ImportProjectArchiveAsync(string archivePath, string destinationDirectory);
+    Task<string> ExportProjectArchiveAsync(Project project, string destinationArchivePath, string? version);
     bool ProjectExists(string projectPath);
 }
