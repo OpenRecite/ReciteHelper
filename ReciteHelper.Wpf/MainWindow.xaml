@@ -239,18 +239,51 @@
                 </Grid>
             </Button>
 
-            <Label
-                Margin="0,60,0,0"
-                HorizontalAlignment="Center"
-                Content="TIPS"
-                FontFamily="Times New Roman"
-                FontSize="24"
-                FontWeight="Bold"
-                Foreground="Red"
-                Opacity="100" />
+            <Button
+                Height="80"
+                Margin="0,30,0,0"
+                Click="ResourceCenter_Click"
+                Style="{StaticResource ActionButtonStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border
+                        Grid.Column="0"
+                        Width="80"
+                        Background="#0F766E"
+                        CornerRadius="4,0,0,4">
+                        <Image
+                            Width="32"
+                            Height="32"
+                            RenderOptions.BitmapScalingMode="HighQuality"
+                            Source="pack://application:,,,/ReciteHelper.Wpf;component/Images/zip.png" />
+                    </Border>
+
+                    <StackPanel
+                        Grid.Column="1"
+                        Margin="16,12"
+                        VerticalAlignment="Center">
+                        <TextBlock
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="#333333"
+                            Text="资源中心" />
+                        <TextBlock
+                            Margin="0,4,0,0"
+                            FontSize="11"
+                            Foreground="#666666"
+                            Text="上传和检索共享项目包"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+            </Button>
 
             <Label
                 Name="SloganLabel"
+                Margin="0,40,0,0"
                 HorizontalAlignment="Center"
                 Content="自力更生，艰苦奋斗。"
                 FontFamily="Times New Roman, KaiTi"

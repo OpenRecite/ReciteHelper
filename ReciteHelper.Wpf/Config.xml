@@ -4,6 +4,7 @@
 	
 	<DeepSeekKey>%Environment.GetEnvironmentVariable("DSAPI")%</DeepSeekKey>
 	<QwenKey>%Environment.GetEnvironmentVariable("BitchSDAU")%</QwenKey>
+	<ResourceCenterServerUrl>http://47.250.181.152:5000</ResourceCenterServerUrl>
 	<MissingStrategy>Ignore</MissingStrategy>
 	
 	<OCRAccess></OCRAccess>

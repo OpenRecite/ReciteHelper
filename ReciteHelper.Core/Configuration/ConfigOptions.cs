@@ -11,6 +11,7 @@ public class ConfigOptions
     public string Version { get; set; } = "v3";
     public string? DeepSeekKey { get; set; }
     public string? QwenKey { get; set; }
+    public string ResourceCenterServerUrl { get; set; } = "http://localhost:5000";
     public string? OCRAccess { get; set; }
     public string? OCRSecret { get; set; }
     public int RStandard { get; set; } = 60;

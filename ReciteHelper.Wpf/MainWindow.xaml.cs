@@ -292,6 +292,18 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ResourceCenter_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new ResourceCenterWindow(
+            Config.Configure.ResourceCenterServerUrl,
+            _projectFileService,
+            AddRecentProjectAsync)
+        {
+            Owner = this
+        };
+        window.Show();
+    }
+
     private async void CatchProjectAsync(string path, string name)
     {
         await AddRecentProjectAsync(path, name);
