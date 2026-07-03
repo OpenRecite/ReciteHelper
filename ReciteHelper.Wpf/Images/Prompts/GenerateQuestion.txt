@@ -8,6 +8,8 @@ General rules:
 - Knowledge points that are only statements belong in know, not bank.
 - Fill every answer field with a reliable answer based only on the source material.
 - Keep review_tag as an empty array.
+- Generate enough questions for the current block. For a normal block, produce about 6-12 useful questions when the source material supports it.
+- Question quantity and chapter quantity are different: do not reduce the number of questions just because there are only a few broad chapters.
 
 SingleChoice:
 - Use type = "SingleChoice".
@@ -36,7 +38,15 @@ Essay:
 - Put the expected answer in correct_answer.
 - Keep correct_answers, options, and correct_option_ids empty.
 
-Divide the content into several chapters. Return only valid JSON for List<Chapter>, without Markdown fences.
+Divide the content into broad chapters. Return only valid JSON for List<Chapter>, without Markdown fences.
+
+Chapter naming rules:
+- Use a small number of broad teaching units. Do not create one chapter per question, paragraph, sentence, or isolated concept.
+- For a normal source chunk, 1-3 chapters are usually enough.
+- If the source text contains explicit headings, section names, categories, catalogue titles, or labels, use those original names as chapter names.
+- If a text block starts with "当前资料章节：", use that value as the preferred chapter name unless the following content clearly belongs to a more specific subheading.
+- Do not use vague names such as "杂项题目", "其它内容", "综合", "Chapter 1", or "第1章" when the source contains a meaningful title.
+- If no explicit heading exists, infer a concise teaching-unit name from the content topic.
 
 JSON shape:
 [

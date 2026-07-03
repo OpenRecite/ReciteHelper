@@ -19,6 +19,8 @@ namespace ReciteHelper.Infrastructure.Services;
 public sealed partial class ProjectCreationService : IProjectCreationService
 {
     private const int ChunkSize = 500;
+    private const int MinPreferredChapterCount = 6;
+    private const int MaxPreferredChapterCount = 12;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
@@ -762,6 +764,18 @@ public sealed partial class ProjectCreationService : IProjectCreationService
     [GeneratedRegex(@"\s+")]
     private static partial Regex WhitespaceRegex();
 
+    [GeneratedRegex(@"^(杂项题目|其它内容|其他内容|综合|未分类|未命名|通用章节|主题单元\s*\d+|chapter\s*\d+|section\s*\d+|unit\s*\d+|第\s*\d+\s*章|第[一二三四五六七八九十]+\s*章)$", RegexOptions.IgnoreCase)]
+    private static partial Regex GenericChapterNameRegex();
+
+    [GeneratedRegex(@"当前资料章节[:：]\s*(?<name>[^\r\n]+)")]
+    private static partial Regex EmbeddedHeadingRegex();
+
+    [GeneratedRegex(@"[\u4e00-\u9fff]{2,8}|[A-Za-z][A-Za-z0-9\-]{2,}")]
+    private static partial Regex KeywordRegex();
+
+    [GeneratedRegex(@"^(问题|答案|题目|章节|知识|内容|资料|学习|复习|概念|定义|特点|作用|原因|过程|分类|包括|主要|相关|进行|分析|说明|简述|论述|the|and|for|with)$", RegexOptions.IgnoreCase)]
+    private static partial Regex CommonTopicWordRegex();
+
     private async Task<List<List<Chapter>>> MergeChunksAsync(
         List<Chunk> chunks,
         string deepSeekKey,
@@ -808,6 +822,8 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         IReadOnlyList<string> existingChapterNames,
         bool allowNewChapters)
     {
+        NormalizeGeneratedChapterNames(allChapter);
+
         var agent = BuildAgent(deepSeekKey);
         var chapters = new List<Chapter>();
         var chapterNames = new List<string>();
@@ -822,7 +838,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
 
         Report(progress, null, null, 0, chapterNames.Count, null, null, "正在合并相似章节并整理题目结构。", ProjectCreationStage.TextClustering);
         if (chapterNames.Count == 0)
-            return FlattenGeneratedChapters(allChapter);
+            return LimitChapterCount(FlattenGeneratedChapters(allChapter));
 
         var prompt = await BuildChapterClusterPromptAsync(chapterNames, existingChapterNames, allowNewChapters);
         var clusterResult = await agent.Run(prompt);
@@ -833,7 +849,12 @@ public sealed partial class ProjectCreationService : IProjectCreationService
 
         if (cluster.Count == 0)
             return allowNewChapters
-                ? FlattenGeneratedChapters(allChapter)
+                ? LimitChapterCount(FlattenGeneratedChapters(allChapter))
+                : AssignAllToBestExistingChapter(allChapter, existingChapterNames);
+
+        if (IsBadMiscellaneousCluster(cluster, chapterNames.Count))
+            return allowNewChapters
+                ? LimitChapterCount(FlattenGeneratedChapters(allChapter))
                 : AssignAllToBestExistingChapter(allChapter, existingChapterNames);
 
         for (var clusterIndex = 0; clusterIndex < cluster.Count; clusterIndex++)
@@ -902,7 +923,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
                 current.KnowledgePoints!.AddRange(leftover.KnowledgePoints);
         }
 
-        return chapters;
+        return allowNewChapters ? LimitChapterCount(chapters) : chapters;
     }
 
     private async Task<string> BuildChapterClusterPromptAsync(
@@ -914,9 +935,12 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         var builder = new StringBuilder(basePrompt);
         builder.AppendLine();
         builder.AppendLine("Additional clustering rules:");
-        builder.AppendLine("- Merge aggressively. Prefer 4-10 broad teaching chapters over many tiny chapters.");
+        builder.AppendLine("- Merge aggressively. The final number of chapters should usually be 6-12.");
+        builder.AppendLine("- Never return more than 12 clusters unless the source explicitly has more than 12 major textbook units.");
         builder.AppendLine("- Names that differ only by wording, examples, section numbers, or granularity must be merged.");
         builder.AppendLine("- Do not create a separate chapter for one isolated concept if it fits any broader chapter.");
+        builder.AppendLine("- Candidate names may come from source-file headings. Preserve meaningful source headings whenever possible.");
+        builder.AppendLine("- Do not assign many chapters to 杂项题目/其它内容. If more than two candidates are hard to classify, infer real teaching-unit names from their topics instead.");
         if (existingChapterNames.Count > 0)
         {
             builder.AppendLine("- Existing project chapters are listed below. Prefer reusing them exactly.");
@@ -940,10 +964,177 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         bool allowNewChapters)
     {
         if (allowNewChapters || existingChapterNames.Count == 0)
-            return string.IsNullOrWhiteSpace(proposedName) ? "杂项题目" : proposedName.Trim();
+            return IsGenericChapterName(proposedName) ? "综合复习" : proposedName!.Trim();
 
         var exact = existingChapterNames.FirstOrDefault(name => string.Equals(name, proposedName, StringComparison.OrdinalIgnoreCase));
         return exact ?? FindBestExistingChapterName(proposedName, existingChapterNames);
+    }
+
+    private static void NormalizeGeneratedChapterNames(List<List<Chapter>> allChapter)
+    {
+        var unnamedIndex = 1;
+        foreach (var chapter in allChapter.SelectMany(group => group))
+        {
+            chapter.Name = CleanChapterName(chapter.Name);
+            if (!IsGenericChapterName(chapter.Name))
+                continue;
+
+            chapter.Name = InferChapterName(chapter) ?? $"主题单元 {unnamedIndex++}";
+        }
+    }
+
+    private static bool IsBadMiscellaneousCluster(IReadOnlyList<ChapterCluster> cluster, int candidateCount)
+    {
+        if (candidateCount <= 1)
+            return false;
+
+        var miscAssigned = cluster
+            .Where(item => IsGenericChapterName(item.UnifiedName))
+            .Sum(item => item.Chapters?.Count ?? 0);
+
+        return miscAssigned >= Math.Max(3, candidateCount / 2);
+    }
+
+    private static string? InferChapterName(Chapter chapter)
+    {
+        var heading = TryReadHeadingFromContent(chapter);
+        if (!string.IsNullOrWhiteSpace(heading))
+            return heading;
+
+        var text = string.Join(' ',
+            (chapter.KnowledgePoints ?? []).Select(point => $"{point.Name} {point.ContentMarkdown}")
+                .Concat((chapter.Questions ?? []).Select(question => $"{question.Text} {question.GetCorrectAnswerText()}")));
+        var keywords = KeywordRegex().Matches(text)
+            .Select(match => match.Value.Trim())
+            .Where(word => word.Length >= 2)
+            .Where(word => !CommonTopicWordRegex().IsMatch(word))
+            .GroupBy(word => word)
+            .OrderByDescending(group => group.Count())
+            .ThenByDescending(group => group.Key.Length)
+            .Take(2)
+            .Select(group => group.Key)
+            .ToList();
+
+        return keywords.Count == 0 ? null : string.Join("与", keywords);
+    }
+
+    private static string? TryReadHeadingFromContent(Chapter chapter)
+    {
+        foreach (var value in (chapter.KnowledgePoints ?? []).Select(point => point.Name)
+                     .Concat((chapter.Questions ?? []).Select(question => question.Text)))
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            var match = EmbeddedHeadingRegex().Match(value);
+            if (match.Success)
+                return CleanChapterName(match.Groups["name"].Value);
+        }
+
+        return null;
+    }
+
+    private static string CleanChapterName(string? name)
+    {
+        var cleaned = WhitespaceRegex().Replace(name ?? string.Empty, " ").Trim();
+        cleaned = cleaned.Trim(' ', '：', ':', '-', '—');
+        return cleaned;
+    }
+
+    private static bool IsGenericChapterName(string? name)
+    {
+        var cleaned = CleanChapterName(name);
+        if (string.IsNullOrWhiteSpace(cleaned))
+            return true;
+
+        return GenericChapterNameRegex().IsMatch(cleaned);
+    }
+
+    private static List<Chapter> LimitChapterCount(List<Chapter> chapters)
+    {
+        var nonEmpty = chapters
+            .Where(chapter => chapter.Questions is { Count: > 0 } || chapter.KnowledgePoints is { Count: > 0 })
+            .ToList();
+        if (nonEmpty.Count <= MaxPreferredChapterCount)
+            return RenumberChapters(nonEmpty);
+
+        var targetCount = MaxPreferredChapterCount;
+        var limited = new List<Chapter>(targetCount);
+        for (var groupIndex = 0; groupIndex < targetCount; groupIndex++)
+        {
+            var start = groupIndex * nonEmpty.Count / targetCount;
+            var end = (groupIndex + 1) * nonEmpty.Count / targetCount;
+            var group = nonEmpty.Skip(start).Take(Math.Max(1, end - start)).ToList();
+            limited.Add(MergeChapterGroup(group, groupIndex + 1));
+        }
+
+        return RenumberChapters(limited);
+    }
+
+    private static Chapter MergeChapterGroup(IReadOnlyList<Chapter> group, int number)
+    {
+        var merged = new Chapter
+        {
+            Name = CreateMergedChapterName(group, number),
+            Number = number,
+            Questions = [],
+            KnowledgePoints = []
+        };
+
+        foreach (var chapter in group)
+        {
+            if (chapter.Questions is not null)
+                merged.Questions.AddRange(chapter.Questions);
+            if (chapter.KnowledgePoints is not null)
+                merged.KnowledgePoints.AddRange(chapter.KnowledgePoints);
+        }
+
+        return merged;
+    }
+
+    private static string CreateMergedChapterName(IReadOnlyList<Chapter> group, int number)
+    {
+        var meaningfulNames = group
+            .Select(chapter => CleanChapterName(chapter.Name))
+            .Where(name => !IsGenericChapterName(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(2)
+            .ToList();
+        if (meaningfulNames.Count == 1)
+            return meaningfulNames[0];
+        if (meaningfulNames.Count > 1)
+            return $"{meaningfulNames[0]}与{meaningfulNames[1]}";
+
+        var inferred = InferChapterName(MergeChapterGroupWithoutName(group));
+        return string.IsNullOrWhiteSpace(inferred) ? $"综合单元 {number}" : inferred;
+    }
+
+    private static Chapter MergeChapterGroupWithoutName(IReadOnlyList<Chapter> group)
+    {
+        var merged = new Chapter
+        {
+            Name = string.Empty,
+            Questions = [],
+            KnowledgePoints = []
+        };
+
+        foreach (var chapter in group)
+        {
+            if (chapter.Questions is not null)
+                merged.Questions.AddRange(chapter.Questions);
+            if (chapter.KnowledgePoints is not null)
+                merged.KnowledgePoints.AddRange(chapter.KnowledgePoints);
+        }
+
+        return merged;
+    }
+
+    private static List<Chapter> RenumberChapters(List<Chapter> chapters)
+    {
+        for (var index = 0; index < chapters.Count; index++)
+            chapters[index].Number = index + 1;
+
+        return chapters;
     }
 
     private static List<Chapter> AssignAllToBestExistingChapter(

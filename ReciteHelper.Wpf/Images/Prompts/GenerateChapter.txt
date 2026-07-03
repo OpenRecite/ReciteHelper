@@ -1,11 +1,16 @@
 Below are candidate chapter titles. Cluster them into broad, stable teaching units.
 
 Rules:
-- Merge aggressively. Prefer fewer chapters over many tiny chapters.
+- Merge aggressively. The final result should usually contain 6-12 broad teaching chapters.
+- Never create one chapter per question, paragraph, isolated term, or tiny concept.
+- Do not return more than 12 chapters unless the source explicitly has more than 12 major textbook units.
 - Titles that differ only by wording, numbering, example scope, or granularity must be merged.
 - Do not keep a separate chapter for one isolated concept if it fits a broader chapter.
 - If existing project chapters are provided later, reuse those exact names whenever possible.
-- If you encounter titles that are difficult to categorize, such as "Chapter 1", classify them under "杂项题目".
+- Never collapse many unrelated titles into "杂项题目". Use "杂项题目" only for a tiny number of truly unclassifiable leftovers.
+- If a candidate title already looks like a real source heading or teaching unit, preserve or merge it into the closest meaningful teaching unit.
+- Generic titles such as "Chapter 1" or "第1章" must be renamed by their content topic, not by a vague miscellaneous bucket.
+- Chapter titles must **NOT** exceed 10 characters.
 - Numbers should be sequential and should not be repeated.
 
 public class ChapterCluster
