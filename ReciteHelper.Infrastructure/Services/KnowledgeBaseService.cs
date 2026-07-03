@@ -38,7 +38,7 @@ namespace ReciteHelper.Infrastructure.Services
 
             var cfg = await configService.LoadAsync();
             if (string.IsNullOrWhiteSpace(cfg.DeepSeekKey))
-                throw new InvalidOperationException("知识库构建失败：未配置 DeepSeek Key。");
+                throw new InvalidOperationException("知识库构建失败：未配置 DeepSeek Key。请在 Config.xml 中配置 DeepSeekKey。");
 
             if (string.IsNullOrWhiteSpace(cfg.QwenKey))
                 throw new InvalidOperationException("知识库构建失败：未配置 Qwen Key。");

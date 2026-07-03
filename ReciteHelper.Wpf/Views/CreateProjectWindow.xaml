@@ -172,7 +172,7 @@
                         Background="#F8F8F8"
                         IsReadOnly="True"
                         Style="{StaticResource ModernTextBox}"
-                        ToolTip="DeepSeek 将从 PDF/MEG 学习资料中生成知识点和题目；试卷请在项目内通过导入套卷处理" />
+                        ToolTip="将从 PDF/MEG 学习资料中提取知识点和题目；试卷请在项目内通过导入套卷处理" />
                     <Button
                         x:Name="BrowseQuestionBankButton"
                         Grid.Column="1"

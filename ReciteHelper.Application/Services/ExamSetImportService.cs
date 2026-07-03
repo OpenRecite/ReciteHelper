@@ -33,7 +33,7 @@ public sealed class ExamSetImportService(
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(deepSeekKey))
-            throw new InvalidOperationException("尚未配置 DeepSeek Key，无法导入试卷。");
+            throw new InvalidOperationException("尚未配置 DeepSeek Key，无法导入试卷。请在 Config.xml 中配置 DeepSeekKey。");
 
         progress?.Report(new ExamSetImportProgress(ExamSetImportStage.ReadingSource, "正在读取 PDF/TXT/HTML/MHTML 中的试卷文本..."));
         var sourceText = await sourceTextReader.ReadAsync(sourceFilePath, cancellationToken);
@@ -41,7 +41,7 @@ public sealed class ExamSetImportService(
             throw new InvalidDataException("试卷文件中没有可供识别的文本。");
 
         cancellationToken.ThrowIfCancellationRequested();
-        progress?.Report(new ExamSetImportProgress(ExamSetImportStage.ExtractingPapers, "正在由 DeepSeek 识别套卷边界、题目、答案和解析..."));
+        progress?.Report(new ExamSetImportProgress(ExamSetImportStage.ExtractingPapers, "正在识别套卷边界、题目、答案和解析..."));
         var response = await aiChatService.RunAsync(
             deepSeekKey,
             BuildPrompt(sourceText),
@@ -50,7 +50,7 @@ public sealed class ExamSetImportService(
         cancellationToken.ThrowIfCancellationRequested();
         var extractedSets = DeserializeResponse(response);
         if (extractedSets.Count == 0)
-            throw new InvalidDataException("DeepSeek 未能从文件中识别出完整套卷。");
+            throw new InvalidDataException("未能从文件中识别出完整套卷。");
 
         progress?.Report(new ExamSetImportProgress(
             ExamSetImportStage.ValidatingQuestions,
@@ -166,7 +166,7 @@ public sealed class ExamSetImportService(
         }
 
         if (root.ValueKind != JsonValueKind.Array)
-            throw new JsonException("DeepSeek 返回的套卷数据不是 JSON 数组。");
+            throw new JsonException("返回的套卷数据不是 JSON 数组。");
 
         return JsonSerializer.Deserialize<List<ExtractedExamSet>>(root.GetRawText(), JsonOptions) ?? [];
     }
@@ -190,7 +190,7 @@ public sealed class ExamSetImportService(
             catch (JsonException)
             {
                 throw new JsonException(
-                    $"DeepSeek 返回的 JSON 无法解析：{firstException.Message} 已尝试修复字符串中的未转义换行但仍失败。",
+                    $"返回的 JSON 无法解析：{firstException.Message} 已尝试修复字符串中的未转义换行但仍失败。",
                     firstException);
             }
         }

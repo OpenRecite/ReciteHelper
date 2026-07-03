@@ -80,7 +80,7 @@ public partial class CreateGalGameWindow : Window, INotifyPropertyChanged
 
         if (Config.Configure?.DeepSeekKey is null)
         {
-            MessageBox.Show("您还未配置Deepseek...", "提示",
+            MessageBox.Show("尚未配置 DeepSeek Key，无法创建游戏项目。请在 Config.xml 中配置 DeepSeekKey。", "尚未配置 DeepSeek Key",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }

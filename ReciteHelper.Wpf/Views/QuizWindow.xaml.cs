@@ -380,7 +380,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         var currentQuestion = _questions[questionIndex];
         AskAiBanner.Visibility = Visibility.Collapsed;
         AiAnswerPanel.Visibility = Visibility.Visible;
-        AiAnswerText.Text = "正在请求 DeepSeek 生成解析...";
+        AiAnswerText.Text = "正在生成题目解析...";
         AskAiButton.IsEnabled = false;
 
         try
@@ -393,7 +393,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
 
             if (questionIndex == _currentQuestionIndex)
                 AiAnswerText.Text = string.IsNullOrWhiteSpace(explanation)
-                    ? "DeepSeek 未返回有效解析。"
+                    ? "暂未生成有效解析。"
                     : explanation.Trim();
         }
         catch (OperationCanceledException)
@@ -415,7 +415,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         var currentQuestion = _questions[questionIndex];
         if (currentQuestion.Status == AnswerStatus.NotAnswered)
         {
-            MessageBox.Show("请先提交答案，再向 DeepSeek 询问题目解析。", "尚未提交答案",
+            MessageBox.Show("请先提交答案，再查看题目解析。", "尚未提交答案",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -432,7 +432,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         KnowledgeLoadingText.Visibility = Visibility.Visible;
         AskAiBanner.Visibility = Visibility.Collapsed;
         AiAnswerPanel.Visibility = Visibility.Visible;
-        AiAnswerText.Text = "正在请求 DeepSeek 生成解析...";
+        AiAnswerText.Text = "正在生成题目解析...";
         AskDeepSeekButton.IsEnabled = false;
 
         try
@@ -460,7 +460,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
                 cancellationToken);
             if (questionIndex == _currentQuestionIndex)
                 AiAnswerText.Text = string.IsNullOrWhiteSpace(explanation)
-                    ? "DeepSeek 未返回有效解析。"
+                    ? "暂未生成有效解析。"
                     : explanation.Trim();
         }
         catch (OperationCanceledException)
@@ -468,7 +468,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            AiAnswerText.Text = $"询问 DeepSeek 失败：{ex.Message}";
+            AiAnswerText.Text = $"生成解析失败：{ex.Message}";
         }
         finally
         {

@@ -176,7 +176,7 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
 
         if (string.IsNullOrWhiteSpace(Config.Configure.DeepSeekKey))
         {
-            MessageBox.Show("尚未配置 DeepSeek Key，无法把错题聚类到已有章节。", "无法导入", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("尚未配置 DeepSeek Key，无法把错题归并到已有章节。请在 Config.xml 中配置 DeepSeekKey。", "无法导入", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 

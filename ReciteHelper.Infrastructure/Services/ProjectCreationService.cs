@@ -19,6 +19,7 @@ namespace ReciteHelper.Infrastructure.Services;
 public sealed partial class ProjectCreationService : IProjectCreationService
 {
     private const int ChunkSize = 500;
+    private const int StructuredChapterChunkSize = 800;
     private const int MinPreferredChapterCount = 6;
     private const int MaxPreferredChapterCount = 12;
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -107,7 +108,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         }
 
         if (project.Chapters is null || !project.Chapters.Any(chapter => chapter.Questions is { Count: > 0 }))
-            throw new InvalidOperationException("项目创建失败：未能从题库生成任何题目，请检查 AI 返回内容或题库文本提取结果。");
+            throw new InvalidOperationException("项目创建失败：未能从题库生成任何题目，请检查资料文本提取结果或稍后重试。");
 
         await BuildKnowledgeBaseAsync(project, projectDir, knowledgeBaseSourceText, progress);
         Report(progress, 1, 1, 1, 1, 1, 1, "项目创建完成。", ProjectCreationStage.Completed);
@@ -388,8 +389,24 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         IReadOnlyList<string> existingChapterNames,
         bool allowNewChapters)
     {
+        if (allowNewChapters && ContainsExplicitChapterMarkers(text))
+        {
+            Report(
+                progress,
+                0,
+                1,
+                0,
+                1,
+                null,
+                null,
+                "检测到资料中存在明确章节，正在按源文件章节切分。",
+                ProjectCreationStage.KnowledgeExtraction,
+                usesSourceChapters: true);
+            return await ProcessStructuredChapterTextAsync(text, deepSeekKey, missingStrategy, progress);
+        }
+
         var scanTotal = (int)Math.Ceiling(text.Length / (double)ChunkSize);
-        Report(progress, 0, scanTotal, 0, scanTotal, null, null, "你的资料已经被切割完成，正在分块发送至 AI 生成知识点和相关题目。", ProjectCreationStage.KnowledgeExtraction);
+        Report(progress, 0, scanTotal, 0, scanTotal, null, null, "你的资料已经被切割完成，正在分块提取知识点和相关题目。", ProjectCreationStage.KnowledgeExtraction);
 
         return await ClusterQuestionsAsync(text, deepSeekKey, missingStrategy, progress, existingChapterNames, allowNewChapters);
     }
@@ -415,6 +432,276 @@ public sealed partial class ProjectCreationService : IProjectCreationService
             var startIndex = i * ChunkSize;
             var length = Math.Min(ChunkSize, text.Length - startIndex);
             chunks.Add(Chunk.Create(text.Substring(startIndex, length), false, i));
+        }
+
+        return chunks;
+    }
+
+    private async Task<List<Chapter>> ProcessStructuredChapterTextAsync(
+        string text,
+        string deepSeekKey,
+        MissingStrategy missingStrategy,
+        IProgress<ProjectCreationProgress>? progress)
+    {
+        var localChapters = SplitSourceChaptersLocally(text);
+        var sourceChapters = localChapters.Count >= MinPreferredChapterCount
+            ? localChapters
+            : await SplitSourceChaptersAsync(text, deepSeekKey);
+        sourceChapters = ChooseStructuredChapterSplit(sourceChapters, localChapters);
+        if (sourceChapters.Count == 0)
+            return await ClusterQuestionsAsync(text, deepSeekKey, missingStrategy, progress, [], allowNewChapters: true);
+
+        Report(
+            progress,
+            0,
+            sourceChapters.Count,
+            1,
+            sourceChapters.Count,
+            null,
+            null,
+            $"已识别 {sourceChapters.Count} 个源文件章节，正在按章节生成题目。",
+            ProjectCreationStage.TextClustering,
+            usesSourceChapters: true);
+
+        var result = new List<Chapter>();
+        for (var chapterIndex = 0; chapterIndex < sourceChapters.Count; chapterIndex++)
+        {
+            var sourceChapter = sourceChapters[chapterIndex];
+            var chunks = BuildStructuredChapterChunks(sourceChapter.Content);
+            var generated = await GenerateQuestionsForStructuredChapterAsync(
+                sourceChapter.Name,
+                chunks,
+                deepSeekKey,
+                progress,
+                chapterIndex,
+                sourceChapters.Count);
+
+            if (generated.Questions is { Count: > 0 } || generated.KnowledgePoints is { Count: > 0 })
+            {
+                generated.Number = result.Count + 1;
+                result.Add(generated);
+            }
+        }
+
+        return RenumberChapters(result);
+    }
+
+    private async Task<List<SourceChapter>> SplitSourceChaptersAsync(string text, string deepSeekKey)
+    {
+        var agent = BuildAgent(
+            deepSeekKey,
+            "You split source text into chapters. Return only valid JSON and preserve the source wording.");
+        var prompt = $$"""
+        请严格按照资料中的显式章节标题切分文本。
+
+        只有类似“第一章”“第 一章”“第 一 章”“第1章”“第 1 章”等明确章级标题才能作为切分边界。
+        不要把“一、”“1.”“1.1”这种小节、题号、列表项当成章。
+        章节 name 必须使用源文件中的章标题；content 必须是该章标题之后、下一章标题之前的完整正文。
+        不要总结，不要改写，不要遗漏正文。
+
+        只返回 JSON 数组：
+        [
+          { "name": "第一章 xxx", "content": "该章正文" }
+        ]
+
+        <source>
+        {{text}}
+        </source>
+        """;
+
+        try
+        {
+            var response = await agent.Run(prompt);
+            var json = ExtractJsonContent(response.Messages.LastOrDefault(message => message.Content is not null)?.Content);
+            return string.IsNullOrWhiteSpace(json)
+                ? []
+                : JsonSerializer.Deserialize<List<SourceChapter>>(json, JsonOptions)?
+                    .Where(chapter => !string.IsNullOrWhiteSpace(chapter.Name) && !string.IsNullOrWhiteSpace(chapter.Content))
+                    .Select(chapter => new SourceChapter(CleanChapterName(chapter.Name), chapter.Content.Trim()))
+                    .ToList() ?? [];
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to split source chapters with AI: {ex.Message}");
+            return [];
+        }
+    }
+
+    private static List<SourceChapter> SplitSourceChaptersLocally(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return [];
+
+        var matches = ExplicitChapterHeadingRegex().Matches(text);
+        if (matches.Count == 0)
+            return [];
+
+        var markers = matches
+            .Cast<Match>()
+            .Select(match => new SourceChapterMarker(
+                match.Groups["heading"].Index,
+                CleanChapterName(match.Groups["heading"].Value),
+                NormalizeChapterOrdinal(match.Groups["ordinal"].Value)))
+            .Where(marker => marker.Index >= 0 &&
+                             !string.IsNullOrWhiteSpace(marker.Heading) &&
+                             !string.IsNullOrWhiteSpace(marker.Ordinal))
+            .GroupBy(marker => marker.Ordinal, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.OrderBy(marker => marker.Index).First())
+            .OrderBy(marker => marker.Index)
+            .ToList();
+        if (markers.Count == 0)
+            return [];
+
+        var chapters = new List<SourceChapter>();
+        var preface = text[..markers[0].Index].Trim();
+        if (preface.Length >= StructuredChapterChunkSize / 2)
+            chapters.Add(new SourceChapter(InferPrefaceChapterName(preface), preface));
+
+        for (var index = 0; index < markers.Count; index++)
+        {
+            var marker = markers[index];
+            var nextIndex = index + 1 < markers.Count ? markers[index + 1].Index : text.Length;
+            var name = CleanChapterName(marker.Heading);
+            var content = text[marker.Index..nextIndex].Trim();
+            if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(content))
+                chapters.Add(new SourceChapter(name, content));
+        }
+
+        return chapters;
+    }
+
+    private static List<SourceChapter> ChooseStructuredChapterSplit(
+        List<SourceChapter> aiChapters,
+        List<SourceChapter> localChapters)
+    {
+        if (localChapters.Count == 0)
+            return aiChapters;
+        if (aiChapters.Count == 0)
+            return localChapters;
+        if (localChapters.Count >= MinPreferredChapterCount && aiChapters.Count < MinPreferredChapterCount)
+            return localChapters;
+        if (localChapters.Count > aiChapters.Count * 2)
+            return localChapters;
+
+        return aiChapters;
+    }
+
+    private static string NormalizeChapterOrdinal(string value)
+    {
+        return WhitespaceRegex().Replace(value ?? string.Empty, string.Empty).Trim();
+    }
+
+    private static string InferPrefaceChapterName(string preface)
+    {
+        var firstMeaningfulLine = preface
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault(line => line.Contains("绪论", StringComparison.Ordinal) ||
+                                    line.Contains("导论", StringComparison.Ordinal));
+        if (!string.IsNullOrWhiteSpace(firstMeaningfulLine))
+            return CleanChapterName(firstMeaningfulLine.Length <= 40 ? firstMeaningfulLine : firstMeaningfulLine[..40]);
+
+        return "绪论";
+    }
+
+    private async Task<Chapter> GenerateQuestionsForStructuredChapterAsync(
+        string chapterName,
+        IReadOnlyList<Chunk> chunks,
+        string deepSeekKey,
+        IProgress<ProjectCreationProgress>? progress,
+        int chapterIndex,
+        int chapterTotal)
+    {
+        var result = new Chapter
+        {
+            Name = chapterName,
+            Number = chapterIndex + 1,
+            Questions = [],
+            KnowledgePoints = []
+        };
+        if (chunks.Count == 0)
+            return result;
+
+        var agent = BuildAgent(deepSeekKey);
+        var prompt = await _promptProvider.GetPromptAsync("GenerateQuestion.txt");
+        var progressValue = 0;
+        var generatedChapters = new ConcurrentBag<List<Chapter>>();
+
+        var parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = 8
+        };
+
+        await Parallel.ForEachAsync(chunks, parallelOptions, async (chunk, _) =>
+        {
+            try
+            {
+                var structuredPrompt = $$"""
+                {{prompt}}
+
+                当前资料章节：{{chapterName}}
+                必须把本次生成的所有题目和知识点放入同一个章节，章节 name 必须严格等于：{{chapterName}}
+                不要新建其它章节，不要聚类，不要改写章节名。
+
+                <chapter_chunk>
+                {{chunk.Content}}
+                </chapter_chunk>
+                """;
+                var response = await agent.Run(structuredPrompt);
+                var json = ExtractJsonContent(response.Messages.LastOrDefault(message => message.Content is not null)?.Content);
+                if (string.IsNullOrWhiteSpace(json))
+                    return;
+
+                var generated = JsonSerializer.Deserialize<List<Chapter>>(json, JsonOptions);
+                if (generated is null)
+                    return;
+
+                NormalizeGeneratedQuestions(generated);
+                generatedChapters.Add(generated);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to generate structured chapter chunk: {ex.Message}");
+            }
+            finally
+            {
+                var current = Interlocked.Increment(ref progressValue);
+                Report(
+                    progress,
+                    current,
+                    chunks.Count,
+                    chapterIndex + 1,
+                    chapterTotal,
+                    null,
+                    null,
+                    $"正在从“{chapterName}”生成题目 {current}/{chunks.Count}。",
+                    ProjectCreationStage.TextClustering,
+                    usesSourceChapters: true);
+            }
+        });
+
+        foreach (var generated in generatedChapters)
+        {
+            foreach (var chapter in generated)
+            {
+                if (chapter.Questions is not null)
+                    result.Questions!.AddRange(chapter.Questions);
+                if (chapter.KnowledgePoints is not null)
+                    result.KnowledgePoints!.AddRange(chapter.KnowledgePoints);
+            }
+        }
+
+        return result;
+    }
+
+    private static List<Chunk> BuildStructuredChapterChunks(string text)
+    {
+        var totalChunks = (int)Math.Ceiling(text.Length / (double)StructuredChapterChunkSize);
+        var chunks = new List<Chunk>();
+        for (var index = 0; index < totalChunks; index++)
+        {
+            var startIndex = index * StructuredChapterChunkSize;
+            var length = Math.Min(StructuredChapterChunkSize, text.Length - startIndex);
+            chunks.Add(Chunk.Create(text.Substring(startIndex, length), false, index));
         }
 
         return chunks;
@@ -502,6 +789,16 @@ public sealed partial class ProjectCreationService : IProjectCreationService
             return trimmed[objectStart..(objectEnd + 1)].Trim();
 
         return trimmed;
+    }
+
+    private static bool ContainsExplicitChapterMarkers(string text)
+    {
+        return ExplicitChapterHeadingRegex().Matches(text ?? string.Empty)
+            .Cast<Match>()
+            .Select(match => NormalizeChapterOrdinal(match.Groups["ordinal"].Value))
+            .Where(ordinal => !string.IsNullOrWhiteSpace(ordinal))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count() >= 2;
     }
 
     private static void NormalizeGeneratedQuestions(List<Chapter> chapters)
@@ -776,6 +1073,13 @@ public sealed partial class ProjectCreationService : IProjectCreationService
     [GeneratedRegex(@"^(问题|答案|题目|章节|知识|内容|资料|学习|复习|概念|定义|特点|作用|原因|过程|分类|包括|主要|相关|进行|分析|说明|简述|论述|the|and|for|with)$", RegexOptions.IgnoreCase)]
     private static partial Regex CommonTopicWordRegex();
 
+    [GeneratedRegex(@"(?m)(?:^|(?<=[\r\n。！？；;：:])\s*)(?<heading>第\s*(?<ordinal>(?:[一二三四五六七八九十百千万〇零两\d]\s*){1,8})章[^\r\n]{0,60})")]
+    private static partial Regex ExplicitChapterHeadingRegex();
+
+    private sealed record SourceChapter(string Name, string Content);
+
+    private sealed record SourceChapterMarker(int Index, string Heading, string Ordinal);
+
     private async Task<List<List<Chapter>>> MergeChunksAsync(
         List<Chunk> chunks,
         string deepSeekKey,
@@ -810,7 +1114,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         var chunks = BuildChunks(text);
         var allChapter = await MergeChunksAsync(chunks, deepSeekKey, missingStrategy, progress);
         if (allChapter.Count == 0)
-            throw new InvalidOperationException("AI 未返回可解析的章节题目 JSON。");
+            throw new InvalidOperationException("未能生成可解析的章节题目数据。");
 
         return await ClusterGeneratedChaptersAsync(allChapter, deepSeekKey, progress, existingChapterNames, allowNewChapters);
     }
@@ -1239,7 +1543,8 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         int? roundCurrent,
         int? roundTotal,
         string? label = null,
-        ProjectCreationStage stage = ProjectCreationStage.KnowledgeExtraction)
+        ProjectCreationStage stage = ProjectCreationStage.KnowledgeExtraction,
+        bool usesSourceChapters = false)
     {
         progress?.Report(new ProjectCreationProgress(
             scanCurrent ?? 0,
@@ -1249,6 +1554,7 @@ public sealed partial class ProjectCreationService : IProjectCreationService
             roundCurrent ?? 0,
             roundTotal ?? 0,
             label,
-            stage));
+            stage,
+            usesSourceChapters));
     }
 }

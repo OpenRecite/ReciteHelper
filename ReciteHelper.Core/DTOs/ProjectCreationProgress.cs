@@ -10,4 +10,5 @@ public sealed record ProjectCreationProgress(
     int RoundCurrent,
     int RoundTotal,
     string? Label = null,
-    ProjectCreationStage Stage = ProjectCreationStage.KnowledgeExtraction);
+    ProjectCreationStage Stage = ProjectCreationStage.KnowledgeExtraction,
+    bool UsesSourceChapters = false);

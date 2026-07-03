@@ -463,7 +463,7 @@
                             Content="问一问"
                             IsEnabled="False"
                             Style="{StaticResource SecondaryButtonStyle}"
-                            ToolTip="提交答案后，询问 DeepSeek 当前题目的解析" />
+                            ToolTip="提交答案后，查看当前题目的解析" />
                         <Button
                             x:Name="SubmitButton"
                             Click="SubmitButton_Click"
@@ -660,13 +660,13 @@
                                     Margin="0,6,0,12"
                                     FontSize="12"
                                     Foreground="#4D6780"
-                                    Text="将当前问题与以上知识点发送给 DeepSeek。"
+                                    Text="结合当前问题与以上知识点生成进一步解析。"
                                     TextWrapping="Wrap" />
                                 <Button
                                     x:Name="AskAiButton"
                                     HorizontalAlignment="Left"
                                     Click="AskAiButton_Click"
-                                    Content="询问 AI"
+                                    Content="生成解析"
                                     Style="{StaticResource PrimaryButtonStyle}" />
                             </StackPanel>
                         </Border>
@@ -685,7 +685,7 @@
                                     FontSize="13"
                                     FontWeight="SemiBold"
                                     Foreground="#26313D"
-                                    Text="AI 题目解析" />
+                                    Text="题目解析" />
                                 <TextBlock
                                     x:Name="AiAnswerText"
                                     Margin="0,10,0,0"

@@ -17,6 +17,7 @@ public partial class ProgressWindow : Window, INotifyPropertyChanged
     private ProjectCreationStage _currentStage = ProjectCreationStage.ReadingText;
     private ExamSetImportStage _currentExamStage = ExamSetImportStage.ReadingSource;
     private bool _isClosed;
+    private bool _usesSourceChapters;
 
     public ProgressWindow() : this(ProgressWindowMode.ProjectCreation)
     {
@@ -81,14 +82,17 @@ public partial class ProgressWindow : Window, INotifyPropertyChanged
             return;
         }
 
+        if (progress.UsesSourceChapters && !_usesSourceChapters)
+            ConfigureSourceChapterProjectMode();
+
         var stage = progress.Stage < _currentStage ? _currentStage : progress.Stage;
         ApplyStage(stage, progress.Label);
 
         var (current, total, label) = stage switch
         {
             ProjectCreationStage.ReadingText => (progress.RoundCurrent, progress.RoundTotal, "读取进度"),
-            ProjectCreationStage.KnowledgeExtraction => (progress.ScanCurrent, progress.ScanTotal, "知识提取进度"),
-            ProjectCreationStage.TextClustering => (progress.ClusterCurrent, progress.ClusterTotal, "文本聚类进度"),
+            ProjectCreationStage.KnowledgeExtraction => (progress.ScanCurrent, progress.ScanTotal, _usesSourceChapters ? "章节提取进度" : "知识提取进度"),
+            ProjectCreationStage.TextClustering => (progress.ClusterCurrent, progress.ClusterTotal, _usesSourceChapters ? "题目生成进度" : "文本聚类进度"),
             ProjectCreationStage.VectorGeneration => (progress.ClusterCurrent, progress.ClusterTotal, "向量生成进度"),
             ProjectCreationStage.Completed => (1, 1, "完成状态"),
             _ => (0, 1, "当前进度")
@@ -117,7 +121,7 @@ public partial class ProgressWindow : Window, INotifyPropertyChanged
         var label = stage switch
         {
             ExamSetImportStage.ReadingSource => "文件读取",
-            ExamSetImportStage.ExtractingPapers => "DeepSeek 处理",
+            ExamSetImportStage.ExtractingPapers => "内容识别",
             ExamSetImportStage.ValidatingQuestions => "套卷校验",
             ExamSetImportStage.SavingPapers => "保存进度",
             ExamSetImportStage.Completed => "完成状态",
@@ -130,9 +134,9 @@ public partial class ProgressWindow : Window, INotifyPropertyChanged
     {
         Title = "导入试卷";
         WindowHeadingText.Text = "正在创建套卷";
-        WindowSubheadingText.Text = "DeepSeek 将识别套卷边界，并整理题目、答案与解析。";
+        WindowSubheadingText.Text = "正在识别套卷边界，并整理题目、答案与解析。";
         Step1Label.Text = "读取试卷";
-        Step2Label.Text = "AI 抽取";
+        Step2Label.Text = "套卷抽取";
         Step3Label.Text = "题目校验";
         Step4Label.Text = "保存套卷";
         FooterText.Text = "试卷较多时可能需要几分钟，窗口会保持响应。";
@@ -143,12 +147,22 @@ public partial class ProgressWindow : Window, INotifyPropertyChanged
     {
         Title = "导入内容";
         WindowHeadingText.Text = "正在导入内容";
-        WindowSubheadingText.Text = "AI 将从资料或错题中提取题目，并归并到现有章节与知识库。";
+        WindowSubheadingText.Text = "正在从资料或错题中提取题目，并归并到现有章节与知识库。";
         Step1Label.Text = "读取资料";
         Step2Label.Text = "知识提取";
         Step3Label.Text = "章节归并";
         Step4Label.Text = "知识库更新";
         FooterText.Text = "导入期间窗口会保持响应，完成后项目会自动保存。";
+    }
+
+    private void ConfigureSourceChapterProjectMode()
+    {
+        _usesSourceChapters = true;
+        WindowSubheadingText.Text = "检测到源文件包含明确章节，将按原章节生成题目并构建知识库。";
+        Step1Label.Text = "读取文本";
+        Step2Label.Text = "章节提取";
+        Step3Label.Text = "题目生成";
+        Step4Label.Text = "向量生成";
     }
 
     private void ApplyExamStage(ExamSetImportStage stage, string? label)
@@ -161,7 +175,7 @@ public partial class ProgressWindow : Window, INotifyPropertyChanged
                 "正在读取试卷内容",
                 label ?? "正在从 PDF 或 TXT 中提取可供识别的文字。"),
             ExamSetImportStage.ExtractingPapers => (
-                "DeepSeek 正在识别套卷",
+                "正在识别套卷内容",
                 label ?? "正在区分不同套卷，并抽取题目、题型、答案、解析和标题。"),
             ExamSetImportStage.ValidatingQuestions => (
                 "正在校验题目结构",
@@ -226,7 +240,7 @@ public partial class ProgressWindow : Window, INotifyPropertyChanged
         return current >= step ? ActiveTextBrush : InactiveTextBrush;
     }
 
-    private static (string Title, string Description) GetStageText(ProjectCreationStage stage, string? label)
+    private (string Title, string Description) GetStageText(ProjectCreationStage stage, string? label)
     {
         return stage switch
         {
@@ -234,11 +248,15 @@ public partial class ProgressWindow : Window, INotifyPropertyChanged
                 "正在读取你的资料",
                 label ?? "正在复制并读取题库文件，准备进入知识提取流程。"),
             ProjectCreationStage.KnowledgeExtraction => (
-                "你的资料正在被提取知识点",
-                label ?? "你的资料已经被切割完成，正在分块发送至 AI 生成知识点和相关题目。"),
+                _usesSourceChapters ? "正在提取源文件章节" : "你的资料正在被提取知识点",
+                label ?? (_usesSourceChapters
+                    ? "正在按照源文件中的章标题切分资料，保留原始章节结构。"
+                    : "你的资料已经被切割完成，正在分块提取知识点和相关题目。")),
             ProjectCreationStage.TextClustering => (
-                "正在整理章节结构",
-                label ?? "AI 已经生成初步题目，正在合并相似章节并整理题目结构。"),
+                _usesSourceChapters ? "正在从章节中生成题目" : "正在整理章节结构",
+                label ?? (_usesSourceChapters
+                    ? "每个源文件章节会被切成小文本块并并发处理，生成后直接归入对应章节。"
+                    : "初步题目已经生成，正在合并相似章节并整理题目结构。")),
             ProjectCreationStage.VectorGeneration => (
                 "正在生成知识库向量",
                 label ?? "正在将知识点转换为本地向量索引，后续可用于知识库检索。"),

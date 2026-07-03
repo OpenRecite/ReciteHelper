@@ -34,7 +34,7 @@ public sealed class QuestionHelpService(
 
         var config = await configService.LoadAsync();
         if (string.IsNullOrWhiteSpace(config.DeepSeekKey))
-            throw new InvalidOperationException("尚未配置 DeepSeek Key，无法生成题目解析。");
+            throw new InvalidOperationException("尚未配置 DeepSeek Key，无法生成题目解析。请在 Config.xml 中配置 DeepSeekKey。");
 
         var prompt = new StringBuilder()
             .AppendLine("请根据题目、用户答案、正确答案和检索到的知识点生成中文题目解析。")

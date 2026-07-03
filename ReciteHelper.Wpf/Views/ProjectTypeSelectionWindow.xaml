@@ -175,7 +175,7 @@
                                     <TextBlock
                                         FontSize="12"
                                         Foreground="#666666"
-                                        Text="修复了创建项目时由于AI幻觉引起的异常；修复了部分知识点为空导致聚类出现异常的问题。"
+                                        Text="修复了创建项目时内容生成异常导致的错误；修复了部分知识点为空导致聚类出现异常的问题。"
                                         TextWrapping="Wrap" />
                                     <TextBlock
                                         Margin="0,8,0,0"

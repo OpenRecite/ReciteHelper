@@ -188,7 +188,7 @@ public partial class CreateProjectWindow : Window
         var questionBankPaths = GetQuestionBankPaths();
         if (string.IsNullOrWhiteSpace(Config.Configure?.DeepSeekKey))
         {
-            MessageBox.Show("创建项目需要 DeepSeek 从学习资料中生成知识点和题目。", "尚未配置 DeepSeek",
+            MessageBox.Show("创建项目需要 DeepSeek Key，用于从学习资料中生成知识点和题目。请在 Config.xml 中配置 DeepSeekKey。", "尚未配置 DeepSeek Key",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
