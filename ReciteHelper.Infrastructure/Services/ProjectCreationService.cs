@@ -20,6 +20,8 @@ public sealed partial class ProjectCreationService : IProjectCreationService
 {
     private const int ChunkSize = 500;
     private const int StructuredChapterChunkSize = 800;
+    private const int ChapterSimilaritySampleSize = 2400;
+    private const float NearDuplicateChapterSimilarity = 0.75f;
     private const int MinPreferredChapterCount = 6;
     private const int MaxPreferredChapterCount = 12;
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -443,11 +445,17 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         MissingStrategy missingStrategy,
         IProgress<ProjectCreationProgress>? progress)
     {
-        var localChapters = SplitSourceChaptersLocally(text);
-        var sourceChapters = localChapters.Count >= MinPreferredChapterCount
-            ? localChapters
+        var localSplit = SplitSourceChaptersLocally(text);
+        var mergedLocalChapters = localSplit.IsCompleteContinuous
+            ? await MergeDuplicateSourceChaptersBySemanticAsync(localSplit.Chapters)
+            : localSplit.Chapters;
+        var sourceChapters = localSplit.IsCompleteContinuous
+            ? mergedLocalChapters
             : await SplitSourceChaptersAsync(text, deepSeekKey);
-        sourceChapters = ChooseStructuredChapterSplit(sourceChapters, localChapters);
+        sourceChapters = ChooseStructuredChapterSplit(
+            sourceChapters,
+            mergedLocalChapters,
+            localSplit.IsCompleteContinuous);
         if (sourceChapters.Count == 0)
             return await ClusterQuestionsAsync(text, deepSeekKey, missingStrategy, progress, [], allowNewChapters: true);
 
@@ -527,35 +535,35 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         }
     }
 
-    private static List<SourceChapter> SplitSourceChaptersLocally(string text)
+    private static SourceChapterSplit SplitSourceChaptersLocally(string text)
     {
         if (string.IsNullOrWhiteSpace(text))
-            return [];
+            return SourceChapterSplit.Empty;
 
         var matches = ExplicitChapterHeadingRegex().Matches(text);
         if (matches.Count == 0)
-            return [];
+            return SourceChapterSplit.Empty;
 
         var markers = matches
             .Cast<Match>()
             .Select(match => new SourceChapterMarker(
                 match.Groups["heading"].Index,
                 CleanChapterName(match.Groups["heading"].Value),
-                NormalizeChapterOrdinal(match.Groups["ordinal"].Value)))
+                NormalizeChapterOrdinal(match.Groups["ordinal"].Value),
+                ParseChapterNumber(match.Groups["ordinal"].Value)))
             .Where(marker => marker.Index >= 0 &&
                              !string.IsNullOrWhiteSpace(marker.Heading) &&
-                             !string.IsNullOrWhiteSpace(marker.Ordinal))
-            .GroupBy(marker => marker.Ordinal, StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.OrderBy(marker => marker.Index).First())
+                             !string.IsNullOrWhiteSpace(marker.Ordinal) &&
+                             marker.Number is > 0)
             .OrderBy(marker => marker.Index)
             .ToList();
         if (markers.Count == 0)
-            return [];
+            return SourceChapterSplit.Empty;
 
         var chapters = new List<SourceChapter>();
         var preface = text[..markers[0].Index].Trim();
         if (preface.Length >= StructuredChapterChunkSize / 2)
-            chapters.Add(new SourceChapter(InferPrefaceChapterName(preface), preface));
+            chapters.Add(new SourceChapter(InferPrefaceChapterName(preface), preface, 0));
 
         for (var index = 0; index < markers.Count; index++)
         {
@@ -564,26 +572,205 @@ public sealed partial class ProjectCreationService : IProjectCreationService
             var name = CleanChapterName(marker.Heading);
             var content = text[marker.Index..nextIndex].Trim();
             if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(content))
-                chapters.Add(new SourceChapter(name, content));
+                chapters.Add(new SourceChapter(name, content, marker.Number));
         }
 
-        return chapters;
+        return new SourceChapterSplit(chapters, IsCompleteContinuousChapterSequence(markers));
     }
 
     private static List<SourceChapter> ChooseStructuredChapterSplit(
         List<SourceChapter> aiChapters,
-        List<SourceChapter> localChapters)
+        List<SourceChapter> localChapters,
+        bool localSplitIsCompleteContinuous)
     {
+        if (localSplitIsCompleteContinuous)
+            return localChapters;
         if (localChapters.Count == 0)
             return aiChapters;
         if (aiChapters.Count == 0)
             return localChapters;
-        if (localChapters.Count >= MinPreferredChapterCount && aiChapters.Count < MinPreferredChapterCount)
-            return localChapters;
-        if (localChapters.Count > aiChapters.Count * 2)
-            return localChapters;
 
         return aiChapters;
+    }
+
+    private async Task<List<SourceChapter>> MergeDuplicateSourceChaptersBySemanticAsync(
+        IReadOnlyList<SourceChapter> chapters)
+    {
+        if (chapters.Count == 0)
+            return [];
+
+        var result = new List<SourceChapter>();
+        foreach (var chapter in chapters)
+        {
+            var currentIndex = result.FindIndex(existing => IsSameSourceChapter(existing, chapter));
+            if (currentIndex < 0)
+            {
+                result.Add(chapter);
+                continue;
+            }
+
+            var current = result[currentIndex];
+            var similarity = await CalculateSourceChapterSemanticSimilarityAsync(current.Content, chapter.Content);
+            if (similarity >= NearDuplicateChapterSimilarity)
+                continue;
+
+            result[currentIndex] = current with
+            {
+                Content = $"{current.Content}{Environment.NewLine}{Environment.NewLine}{chapter.Content}"
+            };
+        }
+
+        return result;
+    }
+
+    private async Task<float> CalculateSourceChapterSemanticSimilarityAsync(string left, string right)
+    {
+        try
+        {
+            var vectors = await _knowledgeBaseService.EmbedTextsAsync(
+                [
+                    CreateChapterSimilaritySample(left),
+                    CreateChapterSimilaritySample(right)
+                ]);
+            return CalculateCosineSimilarity(vectors[0], vectors[1]);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to calculate chapter semantic similarity: {ex.Message}");
+            return 0;
+        }
+    }
+
+    private static bool IsSameSourceChapter(SourceChapter left, SourceChapter right)
+    {
+        if (left.Number.HasValue && right.Number.HasValue)
+            return left.Number.Value == right.Number.Value;
+
+        return string.Equals(
+            CleanChapterName(left.Name),
+            CleanChapterName(right.Name),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsCompleteContinuousChapterSequence(IReadOnlyList<SourceChapterMarker> markers)
+    {
+        var numbers = markers
+            .Select(marker => marker.Number)
+            .Where(number => number is > 0)
+            .Select(number => number!.Value)
+            .Distinct()
+            .Order()
+            .ToList();
+        if (numbers.Count == 0 || numbers[0] != 1)
+            return false;
+
+        for (var index = 0; index < numbers.Count; index++)
+        {
+            if (numbers[index] != index + 1)
+                return false;
+        }
+
+        return true;
+    }
+
+    private static int? ParseChapterNumber(string value)
+    {
+        var normalized = NormalizeChapterOrdinal(value);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return null;
+        if (int.TryParse(normalized, out var numeric))
+            return numeric;
+
+        return ChineseNumberToInt(normalized);
+    }
+
+    private static int? ChineseNumberToInt(string text)
+    {
+        text = text.Replace("〇", "零", StringComparison.Ordinal)
+            .Replace("两", "二", StringComparison.Ordinal);
+
+        var map = new Dictionary<char, int>
+        {
+            ['零'] = 0,
+            ['一'] = 1,
+            ['二'] = 2,
+            ['三'] = 3,
+            ['四'] = 4,
+            ['五'] = 5,
+            ['六'] = 6,
+            ['七'] = 7,
+            ['八'] = 8,
+            ['九'] = 9
+        };
+
+        var result = 0;
+        var section = 0;
+        var number = 0;
+        foreach (var character in text)
+        {
+            if (map.TryGetValue(character, out var mapped))
+            {
+                number = mapped;
+                continue;
+            }
+
+            switch (character)
+            {
+                case '十':
+                    section += (number == 0 ? 1 : number) * 10;
+                    number = 0;
+                    break;
+                case '百':
+                    section += (number == 0 ? 1 : number) * 100;
+                    number = 0;
+                    break;
+                case '千':
+                    section += (number == 0 ? 1 : number) * 1000;
+                    number = 0;
+                    break;
+                case '万':
+                    result += (section + number) * 10000;
+                    section = 0;
+                    number = 0;
+                    break;
+                default:
+                    return null;
+            }
+        }
+
+        var total = result + section + number;
+        return total > 0 ? total : null;
+    }
+
+    private static string CreateChapterSimilaritySample(string text)
+    {
+        var normalized = WhitespaceRegex().Replace(text ?? string.Empty, " ").Trim();
+        if (normalized.Length <= ChapterSimilaritySampleSize)
+            return normalized;
+
+        var half = ChapterSimilaritySampleSize / 2;
+        return $"{normalized[..half]} {normalized[^half..]}";
+    }
+
+    private static float CalculateCosineSimilarity(float[] left, float[] right)
+    {
+        if (left.Length != right.Length || left.Length == 0)
+            return 0;
+
+        float dot = 0;
+        float leftMagnitude = 0;
+        float rightMagnitude = 0;
+        for (var index = 0; index < left.Length; index++)
+        {
+            dot += left[index] * right[index];
+            leftMagnitude += left[index] * left[index];
+            rightMagnitude += right[index] * right[index];
+        }
+
+        if (leftMagnitude == 0 || rightMagnitude == 0)
+            return 0;
+
+        return dot / (float)(Math.Sqrt(leftMagnitude) * Math.Sqrt(rightMagnitude));
     }
 
     private static string NormalizeChapterOrdinal(string value)
@@ -1076,9 +1263,14 @@ public sealed partial class ProjectCreationService : IProjectCreationService
     [GeneratedRegex(@"(?m)(?:^|(?<=[\r\n。！？；;：:])\s*)(?<heading>第\s*(?<ordinal>(?:[一二三四五六七八九十百千万〇零两\d]\s*){1,8})章[^\r\n]{0,60})")]
     private static partial Regex ExplicitChapterHeadingRegex();
 
-    private sealed record SourceChapter(string Name, string Content);
+    private sealed record SourceChapter(string Name, string Content, int? Number = null);
 
-    private sealed record SourceChapterMarker(int Index, string Heading, string Ordinal);
+    private sealed record SourceChapterMarker(int Index, string Heading, string Ordinal, int? Number);
+
+    private sealed record SourceChapterSplit(List<SourceChapter> Chapters, bool IsCompleteContinuous)
+    {
+        public static SourceChapterSplit Empty { get; } = new([], false);
+    }
 
     private async Task<List<List<Chapter>>> MergeChunksAsync(
         List<Chunk> chunks,

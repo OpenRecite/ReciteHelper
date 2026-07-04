@@ -49,10 +49,7 @@ namespace ReciteHelper.Infrastructure.Services
             {
                 Endpoint = new Uri("https://api.deepseek.com")
             }).GetChatClient("deepseek-v4-flash");
-            _embedClient = new OpenAIClient(new ApiKeyCredential(cfg.QwenKey!), new OpenAIClientOptions
-            {
-                Endpoint = new Uri("https://dashscope.aliyuncs.com/compatible-mode/v1")
-            }).GetEmbeddingClient("text-embedding-v4");
+            _embedClient = CreateQwenEmbeddingClient(cfg.QwenKey!);
 
             var cluster = await ClusterAsync(slices, src.Token);
             var embed = await EmbedAsync(cluster, src.Token);
@@ -75,12 +72,7 @@ namespace ReciteHelper.Infrastructure.Services
             if (string.IsNullOrWhiteSpace(cfg.QwenKey))
                 throw new InvalidOperationException("知识库查询失败：未配置 Qwen Key。");
 
-            var embedClient = new OpenAIClient(
-                new ApiKeyCredential(cfg.QwenKey),
-                new OpenAIClientOptions
-                {
-                    Endpoint = new Uri("https://dashscope.aliyuncs.com/compatible-mode/v1")
-                }).GetEmbeddingClient("text-embedding-v4");
+            var embedClient = CreateQwenEmbeddingClient(cfg.QwenKey);
 
             var response = await embedClient.GenerateEmbeddingsAsync(
                 [query.Trim()],
@@ -94,6 +86,63 @@ namespace ReciteHelper.Infrastructure.Services
                     result.Entry.Text,
                     result.Score))
                 .ToList();
+        }
+
+        public async Task<IReadOnlyList<float[]>> EmbedTextsAsync(
+            IReadOnlyList<string> texts,
+            CancellationToken cancellationToken = default)
+        {
+            var normalizedTexts = texts
+                .Select(text => text?.Trim() ?? string.Empty)
+                .ToList();
+            if (normalizedTexts.Count == 0)
+                return [];
+            if (normalizedTexts.Any(string.IsNullOrWhiteSpace))
+                throw new ArgumentException("待向量化文本不能为空。", nameof(texts));
+
+            var cfg = await configService.LoadAsync();
+            if (string.IsNullOrWhiteSpace(cfg.QwenKey))
+                throw new InvalidOperationException("语义相似度计算失败：未配置 Qwen Key。");
+
+            var embedClient = CreateQwenEmbeddingClient(cfg.QwenKey);
+            var results = new float[normalizedTexts.Count][];
+            var batches = normalizedTexts
+                .Select((text, index) => new { Text = text, Index = index })
+                .Chunk(BatchSize)
+                .ToList();
+
+            using var semaphore = new SemaphoreSlim(MaxConcurrentRequests);
+            var tasks = batches.Select(async batch =>
+            {
+                await semaphore.WaitAsync(cancellationToken);
+                try
+                {
+                    var response = await embedClient.GenerateEmbeddingsAsync(
+                        batch.Select(item => item.Text).ToList(),
+                        options: null,
+                        cancellationToken);
+
+                    for (var index = 0; index < batch.Length; index++)
+                        results[batch[index].Index] = response.Value[index].ToFloats().ToArray();
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            await Task.WhenAll(tasks);
+            return results;
+        }
+
+        private static EmbeddingClient CreateQwenEmbeddingClient(string qwenKey)
+        {
+            return new OpenAIClient(
+                new ApiKeyCredential(qwenKey),
+                new OpenAIClientOptions
+                {
+                    Endpoint = new Uri("https://dashscope.aliyuncs.com/compatible-mode/v1")
+                }).GetEmbeddingClient("text-embedding-v4");
         }
 
         private static string CreateMatchTitle(VectorEntry entry)

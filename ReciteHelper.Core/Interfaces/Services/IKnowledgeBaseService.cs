@@ -12,4 +12,8 @@ public interface IKnowledgeBaseService
         string query,
         int topK,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<float[]>> EmbedTextsAsync(
+        IReadOnlyList<string> texts,
+        CancellationToken cancellationToken = default);
 }
