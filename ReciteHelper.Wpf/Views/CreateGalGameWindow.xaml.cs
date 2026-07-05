@@ -78,9 +78,9 @@ public partial class CreateGalGameWindow : Window, INotifyPropertyChanged
             return;
         }
 
-        if (Config.Configure?.DeepSeekKey is null)
+        if (!HasTextGenerationAccess())
         {
-            MessageBox.Show("尚未配置 DeepSeek Key，无法创建游戏项目。请在 Config.xml 中配置 DeepSeekKey。", "尚未配置 DeepSeek Key",
+            MessageBox.Show("尚未配置 DeepSeek Key 或托管服务激活码，无法创建游戏项目。请在 Config.xml 中配置 DeepSeekKey 或 HostedLicenseCode。", "尚未配置模型服务",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -97,7 +97,7 @@ public partial class CreateGalGameWindow : Window, INotifyPropertyChanged
 
         try
         {
-            await _galGameCreationService.CreateAsync(SelectedFilePath, Config.Configure.DeepSeekKey);
+            await _galGameCreationService.CreateAsync(SelectedFilePath, Config.Configure.DeepSeekKey ?? string.Empty);
             MessageBox.Show("游戏文件创建成功，您可以在章节界面的菜单中加载了", "创建成功", MessageBoxButton.OK, MessageBoxImage.Information);
 
             DialogResult = true;
@@ -108,6 +108,13 @@ public partial class CreateGalGameWindow : Window, INotifyPropertyChanged
             MessageBox.Show($"游戏文件创建失败：{ex.Message}", "创建失败",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private static bool HasTextGenerationAccess()
+    {
+        return !string.IsNullOrWhiteSpace(Config.Configure?.DeepSeekKey) ||
+               !string.IsNullOrWhiteSpace(Config.Configure?.HostedLicenseId) ||
+               !string.IsNullOrWhiteSpace(Config.Configure?.HostedLicenseCode);
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e)

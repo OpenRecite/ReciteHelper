@@ -186,9 +186,9 @@ public partial class CreateProjectWindow : Window
             return;
 
         var questionBankPaths = GetQuestionBankPaths();
-        if (string.IsNullOrWhiteSpace(Config.Configure?.DeepSeekKey))
+        if (!HasTextGenerationAccess())
         {
-            MessageBox.Show("创建项目需要 DeepSeek Key，用于从学习资料中生成知识点和题目。请在 Config.xml 中配置 DeepSeekKey。", "尚未配置 DeepSeek Key",
+            MessageBox.Show("创建项目需要 DeepSeek Key，或输入托管服务激活码。请在 Config.xml 中配置 DeepSeekKey 或 HostedLicenseCode。", "尚未配置模型服务",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -234,6 +234,13 @@ public partial class CreateProjectWindow : Window
             if (!succeeded)
                 ConfirmButton.IsEnabled = true;
         }
+    }
+
+    private static bool HasTextGenerationAccess()
+    {
+        return !string.IsNullOrWhiteSpace(Config.Configure?.DeepSeekKey) ||
+               !string.IsNullOrWhiteSpace(Config.Configure?.HostedLicenseId) ||
+               !string.IsNullOrWhiteSpace(Config.Configure?.HostedLicenseCode);
     }
 
     private static void UpdateProgress(ProgressWindow progressWindow, ProjectCreationProgress progress)

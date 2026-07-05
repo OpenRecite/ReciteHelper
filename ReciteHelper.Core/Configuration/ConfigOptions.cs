@@ -12,6 +12,9 @@ public class ConfigOptions
     public string? DeepSeekKey { get; set; }
     public string? QwenKey { get; set; }
     public string ResourceCenterServerUrl { get; set; } = "http://localhost:5000";
+    public string? HostedServiceUrl { get; set; }
+    public string? HostedLicenseCode { get; set; }
+    public string? HostedLicenseId { get; set; }
     public string? OCRAccess { get; set; }
     public string? OCRSecret { get; set; }
     public int RStandard { get; set; } = 60;

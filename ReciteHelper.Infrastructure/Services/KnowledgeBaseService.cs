@@ -14,13 +14,16 @@ using ReciteHelper.Core.DTOs;
 
 namespace ReciteHelper.Infrastructure.Services
 {
-    public class KnowledgeBaseService(IConfigService cfgService) : IKnowledgeBaseService
+    public class KnowledgeBaseService(
+        IConfigService cfgService,
+        IAiChatService aiChatService,
+        HostedModelService hostedModelService) : IKnowledgeBaseService
     {
         private readonly int _chunkSize = 1500;
         private readonly int _overlap = 50;
 
-        private ChatClient _chatClient;
-        private EmbeddingClient _embedClient;
+        private ChatClient? _chatClient;
+        private EmbeddingClient? _embedClient;
 
         private const int MaxConcurrentRequests = 4;
         private const int BatchSize = 10;
@@ -37,19 +40,18 @@ namespace ReciteHelper.Infrastructure.Services
                 throw new InvalidOperationException("知识库构建失败：未切分出有效文本。");
 
             var cfg = await configService.LoadAsync();
-            if (string.IsNullOrWhiteSpace(cfg.DeepSeekKey))
-                throw new InvalidOperationException("知识库构建失败：未配置 DeepSeek Key。请在 Config.xml 中配置 DeepSeekKey。");
-
-            if (string.IsNullOrWhiteSpace(cfg.QwenKey))
-                throw new InvalidOperationException("知识库构建失败：未配置 Qwen Key。");
-
             var src = new CancellationTokenSource();
 
-            _chatClient = new OpenAIClient(new ApiKeyCredential(cfg.DeepSeekKey!), new OpenAIClientOptions
+            if (!string.IsNullOrWhiteSpace(cfg.DeepSeekKey))
             {
-                Endpoint = new Uri("https://api.deepseek.com")
-            }).GetChatClient("deepseek-v4-flash");
-            _embedClient = CreateQwenEmbeddingClient(cfg.QwenKey!);
+                _chatClient = new OpenAIClient(new ApiKeyCredential(cfg.DeepSeekKey!), new OpenAIClientOptions
+                {
+                    Endpoint = new Uri("https://api.deepseek.com")
+                }).GetChatClient("deepseek-v4-flash");
+            }
+
+            if (!string.IsNullOrWhiteSpace(cfg.QwenKey))
+                _embedClient = CreateQwenEmbeddingClient(cfg.QwenKey!);
 
             var cluster = await ClusterAsync(slices, src.Token);
             var embed = await EmbedAsync(cluster, src.Token);
@@ -69,16 +71,9 @@ namespace ReciteHelper.Infrastructure.Services
                 return [];
 
             var cfg = await configService.LoadAsync();
-            if (string.IsNullOrWhiteSpace(cfg.QwenKey))
-                throw new InvalidOperationException("知识库查询失败：未配置 Qwen Key。");
-
-            var embedClient = CreateQwenEmbeddingClient(cfg.QwenKey);
-
-            var response = await embedClient.GenerateEmbeddingsAsync(
-                [query.Trim()],
-                options: null,
-                cancellationToken);
-            var queryVector = response.Value[0].ToFloats().ToArray();
+            var queryVector = !string.IsNullOrWhiteSpace(cfg.QwenKey)
+                ? await GenerateQwenEmbeddingAsync(cfg.QwenKey, query.Trim(), cancellationToken)
+                : (await hostedModelService.EmbedTextsAsync([query.Trim()], cancellationToken))[0];
 
             return store.Search(queryVector, topK)
                 .Select(result => new KnowledgeBaseMatch(
@@ -102,7 +97,7 @@ namespace ReciteHelper.Infrastructure.Services
 
             var cfg = await configService.LoadAsync();
             if (string.IsNullOrWhiteSpace(cfg.QwenKey))
-                throw new InvalidOperationException("语义相似度计算失败：未配置 Qwen Key。");
+                return await hostedModelService.EmbedTextsAsync(normalizedTexts, cancellationToken);
 
             var embedClient = CreateQwenEmbeddingClient(cfg.QwenKey);
             var results = new float[normalizedTexts.Count][];
@@ -143,6 +138,19 @@ namespace ReciteHelper.Infrastructure.Services
                 {
                     Endpoint = new Uri("https://dashscope.aliyuncs.com/compatible-mode/v1")
                 }).GetEmbeddingClient("text-embedding-v4");
+        }
+
+        private static async Task<float[]> GenerateQwenEmbeddingAsync(
+            string qwenKey,
+            string text,
+            CancellationToken cancellationToken)
+        {
+            var embedClient = CreateQwenEmbeddingClient(qwenKey);
+            var response = await embedClient.GenerateEmbeddingsAsync(
+                [text],
+                options: null,
+                cancellationToken);
+            return response.Value[0].ToFloats().ToArray();
         }
 
         private static string CreateMatchTitle(VectorEntry entry)
@@ -336,17 +344,25 @@ namespace ReciteHelper.Infrastructure.Services
         {
             var prompt = BuildPrompt(chunk);
 
+            const string instructions = "你是一个专业的文本分析专家。请完成以下任务：\n" +
+                                        "1. 将输入的文本块按照知识点的原子性进行分割\n" +
+                                        "2. 确保每个分割后的段落只表达一个独立、完整的知识点\n" +
+                                        "3. 为每个知识点段落生成2-3个关键词标签\n" +
+                                        "4. 生成不超过20字的单句摘要\n" +
+                                        "5. 对于被截断的知识点，如果有明确的语义信息进行补全，否则直接丢弃" +
+                                        "6. 返回JSON数组，每个元素包含text、tags、summary字段，无其他内容，不要添加markdown代码块结构";
+
+            if (_chatClient is null)
+            {
+                var hostedResponse = await aiChatService.RunAsync(string.Empty, prompt, instructions);
+                return ParseResponse(ExtractJsonContent(hostedResponse));
+            }
+
             var messages = new List<ChatMessage>
-        {
-            new SystemChatMessage("你是一个专业的文本分析专家。请完成以下任务：\n" +
-                                  "1. 将输入的文本块按照知识点的原子性进行分割\n" +
-                                  "2. 确保每个分割后的段落只表达一个独立、完整的知识点\n" +
-                                  "3. 为每个知识点段落生成2-3个关键词标签\n" +
-                                  "4. 生成不超过20字的单句摘要\n" +
-                                  "5. 对于被截断的知识点，如果有明确的语义信息进行补全，否则直接丢弃" +
-                                  "6. 返回JSON数组，每个元素包含text、tags、summary字段，无其他内容，不要添加markdown代码块结构"),
-            new UserChatMessage(prompt)
-        };
+            {
+                new SystemChatMessage(instructions),
+                new UserChatMessage(prompt)
+            };
 
             var response = await _chatClient.CompleteChatAsync(messages, new ChatCompletionOptions
             {
@@ -457,6 +473,16 @@ namespace ReciteHelper.Infrastructure.Services
                 .Select((text, index) => new { text, index })
                 .Chunk(BatchSize)
                 .ToList();
+
+            if (_embedClient is null)
+            {
+                var vectors = await hostedModelService.EmbedTextsAsync(textsList, cts);
+                var hostedResult = new Dictionary<Semantics, float[]>();
+                for (var index = 0; index < semanticsList.Count; index++)
+                    hostedResult[semanticsList[index]] = vectors[index];
+
+                return hostedResult;
+            }
 
             using var semaphore = new SemaphoreSlim(MaxConcurrentRequests);
 

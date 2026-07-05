@@ -32,9 +32,6 @@ public sealed class ExamSetImportService(
         IProgress<ExamSetImportProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(deepSeekKey))
-            throw new InvalidOperationException("尚未配置 DeepSeek Key，无法导入试卷。请在 Config.xml 中配置 DeepSeekKey。");
-
         progress?.Report(new ExamSetImportProgress(ExamSetImportStage.ReadingSource, "正在读取 PDF/TXT/HTML/MHTML 中的试卷文本..."));
         var sourceText = await sourceTextReader.ReadAsync(sourceFilePath, cancellationToken);
         if (string.IsNullOrWhiteSpace(sourceText))

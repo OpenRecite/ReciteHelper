@@ -1,10 +1,13 @@
 ﻿<Config>
 	
 	<Version>2</Version>
-	
+
 	<DeepSeekKey>%Environment.GetEnvironmentVariable("DSAPI")%</DeepSeekKey>
 	<QwenKey>%Environment.GetEnvironmentVariable("BitchSDAU")%</QwenKey>
 	<ResourceCenterServerUrl>http://47.250.181.152:5000</ResourceCenterServerUrl>
+	<HostedServiceUrl></HostedServiceUrl>
+	<HostedLicenseCode></HostedLicenseCode>
+	<HostedLicenseId></HostedLicenseId>
 	<MissingStrategy>Ignore</MissingStrategy>
 	
 	<OCRAccess></OCRAccess>

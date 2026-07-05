@@ -5,10 +5,13 @@ using ReciteHelper.Core.Interfaces.Services;
 
 namespace ReciteHelper.Infrastructure.Services;
 
-public sealed class AiChatService : IAiChatService
+public sealed class AiChatService(HostedModelService hostedModelService) : IAiChatService
 {
     public async Task<string> RunAsync(string deepSeekKey, string prompt, string? instructions = null)
     {
+        if (string.IsNullOrWhiteSpace(deepSeekKey))
+            return await hostedModelService.RunChatAsync(prompt, instructions);
+
         var api = new TornadoApi(deepSeekKey);
         var agent = new TornadoAgent(
             client: api,

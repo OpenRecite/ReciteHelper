@@ -5,6 +5,7 @@ using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Application.Services;
 using ReciteHelper.Infrastructure.Configuration;
 using ReciteHelper.Infrastructure.Services;
+using ReciteHelper.Wpf.Views;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
@@ -25,7 +26,20 @@ public partial class App : System.Windows.Application
         var services = new ServiceCollection();
 
         var configService = new ConfigService();
-        var appConfig = await configService.LoadAsync();
+        ReciteHelper.Core.Configuration.ConfigOptions appConfig;
+        try
+        {
+            appConfig = await configService.LoadAsync();
+        }
+        catch
+        {
+            appConfig = new ReciteHelper.Core.Configuration.ConfigOptions();
+            MessageBox.Show(
+                "配置文件无法读取。软件需要 DeepSeek/Qwen API Key，或一站式服务激活码才能使用。",
+                "需要完成配置",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
         Models.Config.Use(appConfig);
 
         services.AddLogging(builder =>
@@ -50,6 +64,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IProjectFileService, ProjectFileService>();
         services.AddSingleton<IProjectCreationService, ProjectCreationService>();
         services.AddSingleton<IQuestionBankTextService, QuestionBankTextService>();
+        services.AddSingleton<HostedModelService>();
         services.AddSingleton<IKnowledgeBaseService, KnowledgeBaseService>();
         services.AddSingleton<IAiChatService, AiChatService>();
         services.AddSingleton<IQuestionHelpService, QuestionHelpService>();
@@ -62,12 +77,46 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IPhonkService, PhonkService>();
         services.AddSingleton<ISuperMemoService, SuperMemoService>(); 
 
+        services.AddSingleton<ActivationWindow>();
         services.AddSingleton<MainWindow>();
 
         _serviceProvider = services.BuildServiceProvider();
 
+        var hostedModelService = _serviceProvider.GetRequiredService<HostedModelService>();
+        if (!await EnsureModelAccessAsync(appConfig, hostedModelService))
+        {
+            Shutdown();
+            return;
+        }
+
+        Models.Config.Use(await configService.LoadAsync());
+
         var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
         mainWindow.Show();
+    }
+
+    private async Task<bool> EnsureModelAccessAsync(
+        ReciteHelper.Core.Configuration.ConfigOptions config,
+        HostedModelService hostedModelService)
+    {
+        if (HasLocalModelKeys(config))
+            return true;
+
+        if (!string.IsNullOrWhiteSpace(config.HostedLicenseId))
+        {
+            var validation = await hostedModelService.ValidateAsync();
+            if (validation.IsValid)
+                return true;
+        }
+
+        var activationWindow = _serviceProvider!.GetRequiredService<ActivationWindow>();
+        return activationWindow.ShowDialog() == true;
+    }
+
+    private static bool HasLocalModelKeys(ReciteHelper.Core.Configuration.ConfigOptions config)
+    {
+        return !string.IsNullOrWhiteSpace(config.DeepSeekKey) &&
+               !string.IsNullOrWhiteSpace(config.QwenKey);
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

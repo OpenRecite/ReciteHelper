@@ -1,6 +1,3 @@
-using LlmTornado;
-using LlmTornado.Agents;
-using LlmTornado.Chat.Models;
 using ReciteHelper.Core.DTOs;
 using ReciteHelper.Core.Interfaces.Services;
 using ReciteHelper.Core.Aggregates;
@@ -32,15 +29,18 @@ public sealed partial class ProjectCreationService : IProjectCreationService
     private readonly IPromptProvider _promptProvider;
     private readonly IProjectFileService _projectFileService;
     private readonly IKnowledgeBaseService _knowledgeBaseService;
+    private readonly IAiChatService _aiChatService;
 
     public ProjectCreationService(
         IPromptProvider promptProvider,
         IProjectFileService projectFileService,
-        IKnowledgeBaseService knowledgeBaseService)
+        IKnowledgeBaseService knowledgeBaseService,
+        IAiChatService aiChatService)
     {
         _promptProvider = promptProvider;
         _projectFileService = projectFileService;
         _knowledgeBaseService = knowledgeBaseService;
+        _aiChatService = aiChatService;
     }
 
     public async Task<CreateProjectResult> CreateAsync(
@@ -413,15 +413,9 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         return await ClusterQuestionsAsync(text, deepSeekKey, missingStrategy, progress, existingChapterNames, allowNewChapters);
     }
 
-    private static TornadoAgent BuildAgent(string deepSeekKey, string? instructions = null)
+    private async Task<string> RunChatAsync(string deepSeekKey, string prompt, string? instructions = null)
     {
-        var api = new TornadoApi(deepSeekKey);
-
-        return new TornadoAgent(
-            client: api,
-            model: ChatModel.DeepSeek.Models.Chat,
-            name: "ArchitectBot",
-            instructions: instructions ?? "You are an assistant who is good at extracting knowledge.");
+        return await _aiChatService.RunAsync(deepSeekKey, prompt, instructions);
     }
 
     private static List<Chunk> BuildChunks(string text)
@@ -496,9 +490,6 @@ public sealed partial class ProjectCreationService : IProjectCreationService
 
     private async Task<List<SourceChapter>> SplitSourceChaptersAsync(string text, string deepSeekKey)
     {
-        var agent = BuildAgent(
-            deepSeekKey,
-            "You split source text into chapters. Return only valid JSON and preserve the source wording.");
         var prompt = $$"""
         请严格按照资料中的显式章节标题切分文本。
 
@@ -519,8 +510,11 @@ public sealed partial class ProjectCreationService : IProjectCreationService
 
         try
         {
-            var response = await agent.Run(prompt);
-            var json = ExtractJsonContent(response.Messages.LastOrDefault(message => message.Content is not null)?.Content);
+            var response = await RunChatAsync(
+                deepSeekKey,
+                prompt,
+                "You split source text into chapters. Return only valid JSON and preserve the source wording.");
+            var json = ExtractJsonContent(response);
             return string.IsNullOrWhiteSpace(json)
                 ? []
                 : JsonSerializer.Deserialize<List<SourceChapter>>(json, JsonOptions)?
@@ -808,7 +802,6 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         if (chunks.Count == 0)
             return result;
 
-        var agent = BuildAgent(deepSeekKey);
         var prompt = await _promptProvider.GetPromptAsync("GenerateQuestion.txt");
         var progressValue = 0;
         var generatedChapters = new ConcurrentBag<List<Chapter>>();
@@ -833,8 +826,8 @@ public sealed partial class ProjectCreationService : IProjectCreationService
                 {{chunk.Content}}
                 </chapter_chunk>
                 """;
-                var response = await agent.Run(structuredPrompt);
-                var json = ExtractJsonContent(response.Messages.LastOrDefault(message => message.Content is not null)?.Content);
+                var response = await RunChatAsync(deepSeekKey, structuredPrompt);
+                var json = ExtractJsonContent(response);
                 if (string.IsNullOrWhiteSpace(json))
                     return;
 
@@ -900,7 +893,6 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         IProgress<ProjectCreationProgress>? progress)
     {
         var sendChunks = chunks;
-        var agent = BuildAgent(deepSeekKey);
         var allChapter = new ConcurrentBag<List<Chapter>>();
         var succeededIndexes = new ConcurrentBag<int>();
         var progressValue = 0;
@@ -915,8 +907,8 @@ public sealed partial class ProjectCreationService : IProjectCreationService
         {
             try
             {
-                var result = await agent.Run($"{prompt}\n{chunk.Content}");
-                var jsonContent = ExtractJsonContent(result.Messages.LastOrDefault(x => x.Content is not null)?.Content);
+                var result = await RunChatAsync(deepSeekKey, $"{prompt}\n{chunk.Content}");
+                var jsonContent = ExtractJsonContent(result);
                 if (string.IsNullOrWhiteSpace(jsonContent))
                     return;
 
@@ -1320,7 +1312,6 @@ public sealed partial class ProjectCreationService : IProjectCreationService
     {
         NormalizeGeneratedChapterNames(allChapter);
 
-        var agent = BuildAgent(deepSeekKey);
         var chapters = new List<Chapter>();
         var chapterNames = new List<string>();
         foreach (var chapter in allChapter)
@@ -1337,8 +1328,8 @@ public sealed partial class ProjectCreationService : IProjectCreationService
             return LimitChapterCount(FlattenGeneratedChapters(allChapter));
 
         var prompt = await BuildChapterClusterPromptAsync(chapterNames, existingChapterNames, allowNewChapters);
-        var clusterResult = await agent.Run(prompt);
-        var jsonContent = ExtractJsonContent(clusterResult.Messages.LastOrDefault(x => x.Content is not null)?.Content);
+        var clusterResult = await RunChatAsync(deepSeekKey, prompt);
+        var jsonContent = ExtractJsonContent(clusterResult);
         var cluster = string.IsNullOrWhiteSpace(jsonContent)
             ? []
             : JsonSerializer.Deserialize<List<ChapterCluster>>(jsonContent, JsonOptions) ?? [];
