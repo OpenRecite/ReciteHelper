@@ -98,27 +98,4 @@ public static class JudgeAnswer
 
         return distances[sourceLength, targetLength];
     }
-
-    public static void UpdateEFValue(Question question, int qScore)
-    {
-        if (question.ReviewTag.Count < 2)
-            return;
-
-        var oldEF = question.EFValue;
-        double newEF;
-
-        if (qScore >= 3)
-        {
-            var factor = 0.1 - (5 - qScore) * (0.08 + (5 - qScore) * 0.02);
-            newEF = oldEF + factor;
-            newEF = Math.Max(1.3, newEF);
-        }
-        else
-        {
-            newEF = oldEF - 0.2;
-            newEF = Math.Max(1.3, newEF);
-        }
-
-        question.EFValue = Math.Round(newEF, 2);
-    }
 }

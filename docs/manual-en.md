@@ -146,7 +146,9 @@ The button is hidden when no knowledge base was built or its file is empty or un
 
 Choose "Smart Review" from the function menu in the chapter selection window. ReciteHelper uses answer history to select the 30 questions currently most useful to review.
 
-The review schedule uses parameters inspired by SuperMemo and adjusted from personal answer records. More practice provides more evidence for estimating review priority; recommendations in a new project are therefore less personalized.
+Scheduling is driven by the FSRS-6 memory model (difficulty, stability, retrievability). Every question stores a memory stability and a difficulty from which the current recall probability is predicted. Questions whose predicted recall has fallen below 90% are due and are served lowest-recall first, followed by never-practised questions and finally the ones you still remember well. After each answer the quiz window shows the predicted recall before the answer, the new stability and the suggested next review time.
+
+The model ships with default parameters fitted on large public review datasets, so a new project works without any data. Once a project has accumulated more than 800 scored answers, ReciteHelper fits personal parameters from your own history when the quiz window closes (usually about a second, in the background) and keeps them only if they predict better. Histories from projects created by earlier versions are converted automatically on first use.
 
 ---
 

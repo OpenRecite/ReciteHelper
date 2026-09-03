@@ -1,7 +1,9 @@
+using ReciteHelper.Core.Aggregates;
 using ReciteHelper.Core.DTOs;
+using ReciteHelper.Core.Entities;
 using ReciteHelper.Core.Interfaces.Configuration;
 using ReciteHelper.Core.Interfaces.Services;
-using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.Scheduling;
 
 namespace ReciteHelper.Application.Services;
 
@@ -9,63 +11,58 @@ public class QuizService : IQuizService
 {
     private readonly IConfigService _configService;
     private readonly IAnswerJudge _judgeService;
-    private readonly ISuperMemoService _superMemoService;
+    private readonly IReviewScheduler _scheduler;
 
-    public QuizService(IConfigService configService, 
-        IAnswerJudge judgeService, ISuperMemoService superMemoService)
+    public QuizService(IConfigService configService, IAnswerJudge judgeService, IReviewScheduler scheduler)
     {
         _configService = configService;
         _judgeService = judgeService;
-        _superMemoService = superMemoService;
+        _scheduler = scheduler;
     }
 
-    public async Task<AnswerResult> ProcessAnswerAsync(Question question,
-        string userAnswer,
-        DateTime startTime)
+    public async Task<AnswerResult> ProcessAnswerAsync(Project project, Question question, string userAnswer, DateTime startTime)
     {
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(question);
+        userAnswer ??= string.Empty;
+
         var (isCorrect, similarity) = await EvaluateAnswerAsync(question, userAnswer);
 
         var config = await _configService.LoadAsync();
-        var duration = DateTime.Now - startTime;
-        var rate = userAnswer.Length / Math.Max(0.1d, duration.TotalSeconds);
-        var rRelative = rate / config.RStandard;
+        var now = DateTime.Now;
+        var responseSeconds = Math.Max(0d, (now - startTime).TotalSeconds);
+        var rate = userAnswer.Length / Math.Max(0.1d, responseSeconds);
+        var rRelative = config.RStandard > 0 ? rate / config.RStandard : 0d;
 
-        // Adjust short answer
-        if (userAnswer.Length <= 12)
-        {
-            var l = userAnswer.Length;
-
-            // WARNING: This is an EMPIRICAL formula
-            var coff = -0.000000464 * Math.Pow(l, 4) + 0.0000746 * Math.Pow(l, 3)
-                - 0.0041 * Math.Pow(l, 2) + 0.0895 * l + 0.2497;
-            
-            rRelative /= coff;
-            rRelative /= 1.099d;
-        }
-
-        rRelative = Math.Min(rRelative, 1.125d);
-
-        // Calculate related values
-        var adjustedSimilarity = isCorrect ? Math.Max(similarity, 83) : similarity;
-        var qValue = await _superMemoService.PredictQualityAsync(rRelative, adjustedSimilarity);
-        var newEFValue = _superMemoService.CalculateEFValue(question.EFValue, qValue);
+        // The scheduler consumes only the judged outcome (validated binary interface).
+        var grade = ReviewGrader.FromJudgement(isCorrect);
+        var outcome = _scheduler.Record(project, question, grade, now);
 
         var reviewTag = new ReviewTag
         {
+            Time = now,
+            Similarity = similarity,
             Rate = rRelative,
-            Time = DateTime.Now,
-            Similarity = adjustedSimilarity,
-            QValue = qValue
+            QValue = isCorrect ? 4 : 1,
+            Grade = (int)grade,
+            IsCorrect = isCorrect,
+            ElapsedDays = outcome.ElapsedDays,
+            Retrievability = outcome.RetrievabilityBefore,
+            ResponseSeconds = responseSeconds,
+            AnswerLength = userAnswer.Length,
+            Stability = outcome.StateAfter.Stability,
+            Difficulty = outcome.StateAfter.Difficulty
         };
+        reviewTag.SetId(question.ReviewTag.Count + 1);
+        question.ReviewTag.Add(reviewTag);
 
         return new AnswerResult
         {
             IsCorrect = isCorrect,
-            QValue = qValue,
-            NewEFValue = newEFValue,
-            ReviewTag = reviewTag,
+            Similarity = similarity,
             RRelative = rRelative,
-            Similarity = similarity
+            ReviewTag = reviewTag,
+            Outcome = outcome
         };
     }
 

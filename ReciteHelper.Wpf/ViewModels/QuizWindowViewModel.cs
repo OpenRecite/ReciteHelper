@@ -8,6 +8,7 @@ using ReciteHelper.Core.Enums;
 using ReciteHelper.Core.EventArgs;
 using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Wpf.Services;
+using ReciteHelper.Wpf.Utilities;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Media;
@@ -199,28 +200,16 @@ public partial class QuizViewModel : ObservableObject, IDisposable
             IsAnswerEnabled = false;
 
 
-            var result = await _quizService.ProcessAnswerAsync(CurrentQuestion.Question, AnswerText.Trim(), _currentQuestionStartTime);
+            var result = await _quizService.ProcessAnswerAsync(_project, CurrentQuestion.Question, AnswerText.Trim(), _currentQuestionStartTime);
 
-            // Update related status
+            // Update related status (the quiz service already updated the memory record and review tags)
             CurrentQuestion.UserAnswer = AnswerText.Trim();
             CurrentQuestion.Status = result.IsCorrect ? AnswerStatus.Correct : AnswerStatus.Wrong;
-
-            // Update data
-            CurrentQuestion.Question.EFValue = result.NewEFValue;
-
-            // Add review record
-            var reviewTag = new ReviewTag
-            {
-                Rate = result.RRelative,
-                Time = DateTime.Now,
-                Similarity = result.Similarity,
-                QValue = result.QValue
-            };
-            CurrentQuestion.Question.ReviewTag.Add(reviewTag);
+            CurrentQuestion.Question.Status = result.IsCorrect;
 
             // Show results
             ShowResult(CurrentQuestion);
-            QValueDisplay = $"Q Predict: {result.QValue}";
+            QValueDisplay = MemoryHintFormatter.Format(result.Outcome);
 
             // Check & trigger Phonk
             _latest.Add(result.IsCorrect);

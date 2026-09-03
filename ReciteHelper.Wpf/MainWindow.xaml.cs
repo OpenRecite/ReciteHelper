@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private readonly IQuizService _quizService;
     private readonly IRecentProjectService _recentProjectService;
     private readonly IReviewGenerator _reviewGenerator;
+    private readonly IReviewPersonalizationService _reviewPersonalizationService;
     private readonly IExamAnswerService _examAnswerService;
     private readonly IExamPaperService _examPaperService;
     private readonly IExamSettingsService _examSettingsService;
@@ -45,8 +46,10 @@ public partial class MainWindow : Window
         IExamSetRepository examSetRepository,
         IFileMergeService fileMergeService,
         IGalGameService galGameService,
-        IQuestionHelpService questionHelpService)
+        IQuestionHelpService questionHelpService,
+        IReviewPersonalizationService reviewPersonalizationService)
     {
+        _reviewPersonalizationService = reviewPersonalizationService;
         _projectFileService = projectFileService;
         _projectCreationService = projectCreationService;
         _questionBankTextService = questionBankTextService;
@@ -336,7 +339,8 @@ public partial class MainWindow : Window
                 _examSetRepository,
                 _projectCreationService,
                 _galGameService,
-                _questionHelpService);
+                _questionHelpService,
+                _reviewPersonalizationService);
             quizWindow.Show();
 
             PopulateRecentProjectsUI();

@@ -26,6 +26,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
     private readonly IProjectCreationService _projectCreationService;
     private readonly IGalGameService _galGameService;
     private readonly IQuestionHelpService _questionHelpService;
+    private readonly IReviewPersonalizationService _reviewPersonalizationService;
     private Project? _currentProject;
     private DispatcherTimer _clockTimer;
     private List<ChapterViewModel> _chapters;
@@ -42,8 +43,10 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
         IExamSetRepository examSetRepository,
         IProjectCreationService projectCreationService,
         IGalGameService galGameService,
-        IQuestionHelpService questionHelpService)
+        IQuestionHelpService questionHelpService,
+        IReviewPersonalizationService reviewPersonalizationService)
     {
+        _reviewPersonalizationService = reviewPersonalizationService;
         _projectFileService = projectFileService;
         _quizService = quizService;
         _reviewGenerator = reviewGenerator;
@@ -151,7 +154,8 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
             chapter.Name!,
             _quizService,
             _projectFileService,
-            _questionHelpService)
+            _questionHelpService,
+            _reviewPersonalizationService)
         {
             Title = $"{_currentProject.ProjectName} - {chapter.Name}",
             Owner = this
@@ -413,7 +417,8 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
             questionList,
             _quizService,
             _projectFileService,
-            _questionHelpService)
+            _questionHelpService,
+            _reviewPersonalizationService)
         { Owner = System.Windows.Application.Current.MainWindow };
         quizWindow.Show();
         Close();

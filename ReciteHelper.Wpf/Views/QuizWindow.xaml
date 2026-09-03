@@ -357,7 +357,7 @@
                         VerticalAlignment="Bottom"
                         FontFamily="Arial Black"
                         Foreground="Gray">
-                        Q Predict: 0
+                        
                     </Label>
                 </Grid>
             </Border>

@@ -1,4 +1,5 @@
 using ReciteHelper.Core.Entities;
+using ReciteHelper.Core.Scheduling;
 using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.SharedKernel;
 using System.Text.Json.Serialization;
@@ -33,6 +34,17 @@ public class Project : AggregateRoot
 
     [JsonPropertyName("last_accessed")]
     public DateTime LastAccessed { get; private set; }
+
+    /// <summary>
+    /// Personalised FSRS-6 parameters fitted from this project's review history;
+    /// null means the population defaults are used.
+    /// </summary>
+    [JsonPropertyName("scheduler_parameters")]
+    public SchedulerParameters? SchedulerParameters { get; set; }
+
+    /// <summary>Number of reviews the current <see cref="SchedulerParameters"/> were fitted on.</summary>
+    [JsonPropertyName("scheduler_fit_reviews")]
+    public int SchedulerFitReviews { get; set; }
 
     public List<Question> ExportQuestions()
     {

@@ -5,6 +5,7 @@ using ReciteHelper.Core.Enums;
 using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Core.DTOs;
 using ReciteHelper.Wpf.Models;
+using ReciteHelper.Wpf.Utilities;
 using ReciteHelper.Wpf.ViewModels;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -25,6 +26,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     private readonly IQuizService _quizService;
     private readonly IProjectFileService _projectFileService;
     private readonly IQuestionHelpService _questionHelpService;
+    private readonly IReviewPersonalizationService _reviewPersonalizationService;
     private ObservableCollection<QuestionItem> _questions;
     private LatestBuffer<bool> _latest;
     private int _currentQuestionIndex = 0;
@@ -57,8 +59,10 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         string chapterName,
         IQuizService quizService,
         IProjectFileService projectFileService,
-        IQuestionHelpService questionHelpService)
+        IQuestionHelpService questionHelpService,
+        IReviewPersonalizationService reviewPersonalizationService)
     {
+        _reviewPersonalizationService = reviewPersonalizationService;
         _quizService = quizService;
         _projectFileService = projectFileService;
         _questionHelpService = questionHelpService;
@@ -81,8 +85,10 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         List<Question> recitePlan,
         IQuizService quizService,
         IProjectFileService projectFileService,
-        IQuestionHelpService questionHelpService)
+        IQuestionHelpService questionHelpService,
+        IReviewPersonalizationService reviewPersonalizationService)
     {
+        _reviewPersonalizationService = reviewPersonalizationService;
         _quizService = quizService;
         _projectFileService = projectFileService;
         _questionHelpService = questionHelpService;
@@ -698,6 +704,7 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         currentQuestion.UserAnswer = answerText.Trim();
 
         var answerResult = await _quizService.ProcessAnswerAsync(
+            _project,
             currentQuestion.Question!,
             currentQuestion.UserAnswer,
             _startTime);
@@ -713,12 +720,8 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
         TrueFalseOptionsPanel.IsEnabled = false;
         UpdateAnswerCardStyles();
 
-        var tagCount = _questions[_currentQuestionIndex].Question!.ReviewTag.Count;
-        answerResult.ReviewTag.SetId(tagCount + 1);
-        _questions[_currentQuestionIndex].Question!.ReviewTag.Add(answerResult.ReviewTag);
-
-        currentQuestion.Question!.EFValue = answerResult.NewEFValue;
-        QDisplayLabel.Content = $"Q Predict: {answerResult.QValue}";
+        currentQuestion.Question!.Status = answerResult.IsCorrect;
+        QDisplayLabel.Content = MemoryHintFormatter.Format(answerResult.Outcome);
 
         // Play phonk effect
         _latest.Add(answerResult.IsCorrect);
@@ -841,20 +844,31 @@ public partial class QuizWindow : Window, INotifyPropertyChanged
     {
         if (_project is null) return;
 
-        // Save record
-        var chapter = _project.Chapters!.Find(x => x.Name == _chapterName)!;
+        // Save record (works for chapter practice and for review plans that span chapters)
         for (int i = 0; i < _questions.Count; i++)
         {
-            chapter.Questions![i].Status = _questions[i].Status switch
+            _questions[i].Question!.Status = _questions[i].Status switch
             {
                 AnswerStatus.NotAnswered => null,
                 AnswerStatus.Correct => true,
                 AnswerStatus.Wrong => false,
-                _ => throw new NotImplementedException("Fuck U")
+                _ => null
             };
-
         }
 
         await _projectFileService.SaveProjectAsync(_project);
+
+        // Personalise the memory model once enough history exists (runs off the UI thread and
+        // keeps the defaults unless the fit is measurably better), then persist the result.
+        try
+        {
+            var fit = await _reviewPersonalizationService.TryPersonalizeAsync(_project);
+            if (fit is not null)
+                await _projectFileService.SaveProjectAsync(_project);
+        }
+        catch (Exception)
+        {
+            // Personalisation is best-effort; the population defaults remain in force.
+        }
     }
 }

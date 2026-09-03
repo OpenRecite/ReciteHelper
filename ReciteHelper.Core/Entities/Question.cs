@@ -45,14 +45,26 @@ public class Question : Entity
         set => _correctAnswers = value ?? [];
     }
 
+    /// <summary>
+    /// Answer history.  The setter must stay public: System.Text.Json skips properties with a
+    /// private setter, which silently dropped every history from disk in earlier versions.
+    /// </summary>
     [JsonPropertyName("review_tag")]
-    public List<ReviewTag> ReviewTag { get; private set; } = [];
+    public List<ReviewTag> ReviewTag { get; set; } = [];
 
     [JsonPropertyName("correct_answer")]
     public string? CorrectAnswer { get; set; }
 
+    /// <summary>
+    /// Legacy SM-2 easiness factor.  Retained so that project files written by earlier
+    /// versions still load; scheduling no longer reads or updates it.
+    /// </summary>
     [JsonPropertyName("ef_value")]
     public double EFValue { get; set; } = 2.5d;
+
+    /// <summary>FSRS-6 memory state; null until the question has been answered once.</summary>
+    [JsonPropertyName("memory")]
+    public MemoryRecord? Memory { get; set; }
 
     private Question(bool? status, string? text, List<ReviewTag> reviewTags, string? correctAnswer, double efValue)
     {

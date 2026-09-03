@@ -15,6 +15,11 @@ namespace ReciteHelper.Wpf;
 
 public partial class App : System.Windows.Application
 {
+    // This should normally stay false. Set it to true only when building a
+    // customer-specific edition that offers hosted activation as an alternative
+    // to user-provided DeepSeek/Qwen API keys.
+    private static readonly bool EnableHostedActivation = false;
+
     private IServiceProvider? _serviceProvider;
 
     private async void Application_Startup(object sender, StartupEventArgs e)
@@ -35,7 +40,7 @@ public partial class App : System.Windows.Application
         {
             appConfig = new ReciteHelper.Core.Configuration.ConfigOptions();
             MessageBox.Show(
-                "配置文件无法读取。软件需要 DeepSeek/Qwen API Key，或一站式服务激活码才能使用。",
+                BuildStartupConfigurationMessage(),
                 "需要完成配置",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -75,7 +80,8 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IGalGameCreationService, GalGameCreationService>();
         services.AddSingleton<IPromptProvider, PromptProvider>();
         services.AddSingleton<IPhonkService, PhonkService>();
-        services.AddSingleton<ISuperMemoService, SuperMemoService>(); 
+        services.AddSingleton<IReviewScheduler, FsrsReviewScheduler>();
+        services.AddSingleton<IReviewPersonalizationService, ReviewPersonalizationService>();
 
         services.AddSingleton<ActivationWindow>();
         services.AddSingleton<MainWindow>();
@@ -102,6 +108,16 @@ public partial class App : System.Windows.Application
         if (HasLocalModelKeys(config))
             return true;
 
+        if (!EnableHostedActivation)
+        {
+            MessageBox.Show(
+                "未检测到可用的 DeepSeekKey 和 QwenKey。\n\n请打开 Config.xml，填写 DeepSeekKey 与 QwenKey，保存后重新启动软件。",
+                "需要填写 API Key",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return false;
+        }
+
         if (!string.IsNullOrWhiteSpace(config.HostedLicenseId))
         {
             var validation = await hostedModelService.ValidateAsync();
@@ -117,6 +133,13 @@ public partial class App : System.Windows.Application
     {
         return !string.IsNullOrWhiteSpace(config.DeepSeekKey) &&
                !string.IsNullOrWhiteSpace(config.QwenKey);
+    }
+
+    private static string BuildStartupConfigurationMessage()
+    {
+        return EnableHostedActivation
+            ? "配置文件无法读取。软件需要 DeepSeek/Qwen API Key，或一站式服务激活码才能使用。"
+            : "配置文件无法读取。软件需要填写 DeepSeekKey 和 QwenKey 后才能使用。";
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
