@@ -1,152 +1,150 @@
-# ReciteHelper
-
 <p align="center">
-  <img src="docs/Resources/Dev/photo.png" alt="ReciteHelper" />
+  <img src="docs/Resources/readme-hero.png" alt="ReciteHelper 5.0 Lotus" width="100%" />
 </p>
 
-**让课程资料从“存着以后看”变成真正可以练习、检索和复习的学习项目。**
+<p align="center">
+  <strong>简体中文</strong> · <a href="README_EN.md">English</a>
+</p>
 
-ReciteHelper 是一款面向考试复习、课程学习与知识整理的开源 Windows 桌面应用。它能够读取学习资料，借助 AI 提取知识点并生成选择、填空、名词解释与解答题，也能从 PDF/TXT/HTML/MHTML 识别包含判断题在内的整套试卷，再通过本地文件知识库、智能判分和个性化复习，把一次性的资料处理变成持续可用的学习闭环。
+<h1 align="center">ReciteHelper</h1>
 
-无感化AI技术的应用，决定了它从不是在学习软件里简单塞入一个聊天框，而是让 AI 参与资料解析、题目生成、错题辅助与复习调度。每个项目的章节、题库、学习记录和知识库都围绕 项目文件组织；知识库采用项目目录内的文件存储，无需额外部署数据库或向量服务。
+<p align="center">
+  <strong>把课程资料变成真正可以练习、检索和复习的学习项目。</strong>
+</p>
 
-ReciteHelper 使用 C#、.NET 10 与 WPF 开发，并承诺保持开源、免费。如果这个项目帮助到了你，欢迎点亮 Star。
+<p align="center">
+  <a href="https://github.com/OpenRecite/ReciteHelper/actions/workflows/dotnet.yml"><img src="https://img.shields.io/github/actions/workflow/status/OpenRecite/ReciteHelper/dotnet.yml?branch=primary&style=flat-square&label=build" alt="Build" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/OpenRecite/ReciteHelper?style=flat-square" alt="License" /></a>
+  <img src="https://img.shields.io/badge/platform-Windows-0078D4?style=flat-square&logo=windows" alt="Windows" />
+  <img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet" alt=".NET 10" />
+  <img src="https://img.shields.io/badge/version-5.0%20Lotus-C9A35B?style=flat-square" alt="5.0 Lotus" />
+</p>
 
-<div style="display: flex; align-items: center; justify-content: center;">
-  <img src="docs/Resources/Logos/clublogo.png" style="height: 50px; width: auto;" />
-  <span style="margin: 0 15px;">&nbsp;</span>
-  <img src="docs/Resources/Logos/caylogo.png" style="height: 50px; width: auto;" />
-</div>
+<p align="center">
+  <a href="https://github.com/OpenRecite/ReciteHelper/releases"><strong>下载 ReciteHelper</strong></a>
+  · <a href="docs/manual-cn.md">用户手册</a>
+  · <a href="https://github.com/OpenRecite/ReciteHelper/issues">问题反馈</a>
+</p>
 
+ReciteHelper 是一款面向考试复习、课程学习与知识整理的开源 Windows 桌面应用。它使用 AI 读取学习资料、提取知识点并生成题目，再通过本地知识库、智能判分、错题解析和 FSRS-6 个性化调度，形成从资料到长期记忆的完整学习闭环。
 
----
+AI 在 ReciteHelper 中不是一个孤立的聊天框。它参与资料解析、题目生成、知识检索和错题辅助；章节、题库、学习记录与知识库则随项目文件一起保存在本地。
 
-## 核心能力
+## 5.0 Lotus
 
-- **从资料自动生成学习项目**：读取文字型 PDF，或先将 DOCX、PPTX、PDF、TXT 等资料合并为 `.meg` 文件；自动完成文本读取、知识提取、章节聚类和向量生成。
-- **五类题型独立交互**：支持选择、填空、判断、名词解释和解答题。选择与判断直接点选，填空按空位填写，名词解释与解答题使用语义相似度判定。
-- **项目级本地知识库**：创建项目时同步构建文件型向量知识库，并随项目一同加载、导入和导出。资料规模较小时无需安装额外服务，也不依赖常驻后端。
-- **错题检索与 AI 解析**：答错后可检索最相关的 3 个知识点，自动高亮与题目、答案重合的内容；需要时再将题目与检索结果交给 DeepSeek，生成有资料依据的针对性解析。
-- **个性化智能复习**：内置 FSRS-6 记忆模型（难度–稳定度–可提取性），为每道题预测当前回忆概率并优先安排即将遗忘的内容；模型自带公开数据拟合的默认参数，积累足够作答记录后会自动拟合专属参数。原理见 [复习算法说明](docs/algorithm-cn.md)。
-- **整卷导入与完整考试流程**：DeepSeek 可从 PDF/TXT/HTML/MHTML 中识别并分割多套试卷，保留答案、解析和自定义大小标题；也支持按章节权重自动组卷、限时考试、自动评分与错题回顾。
-- **知识点学习与进度保存**：按章节浏览聚类后的知识点、标记掌握状态，并将做题记录和项目进度持续保存到本地。
-- **学习内容游戏化**：可将现有 `.rhproj` 题库生成为视觉小说项目，用另一种方式回顾熟悉的知识内容（预览功能，6.0版本及以后可能会稳定）。
+5.0 版本围绕“从资料到掌握”重新整理了学习流程：
 
----
+- **FSRS-6 科学复习**：根据难度、记忆稳定度和距上次复习的时间预测回忆概率，优先安排即将遗忘的题目；积累足够记录后可自动拟合个人参数。
+- **五类题型**：选择、填空、判断、名词解释与解答题使用各自适合的交互和判分方式。
+- **整卷导入与考试闭环**：从 PDF、TXT、HTML 或 MHTML 识别多套试卷，支持章节权重组卷、限时考试、自动评分和错题回顾。
+- **项目级本地知识库**：为每个项目建立独立的文件型向量知识库，错题时检索相关知识点并按需生成 AI 解析。
+- **更灵活的模型接入**：支持 DeepSeek + Qwen 直连、单 Key 的 OpenRouter，以及激活码托管服务三种方案。
+
+## 工作流
+
+```text
+导入课程资料 → AI 提取知识与生成题目 → 练习 / 模拟考试
+      → 错题检索与解析 → FSRS-6 安排下一次复习
+```
+
+## 界面预览
+
+<table>
+  <tr>
+    <td width="62%">
+      <img src="docs/Resources/12-run-quiz.jpg" alt="答题与知识库助手" />
+      <br /><strong>答题与知识库助手</strong><br />练习、自动判分、相关知识点检索与按需 AI 解析集中在同一界面。
+    </td>
+    <td width="38%">
+      <img src="docs/Resources/08-exam-setting.png" alt="考试设置" />
+      <br /><strong>考试设置</strong><br />设置考试时长、题量、分值和章节权重。
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <img src="docs/Resources/03-knowledge-point.png" alt="知识点学习" />
+      <br /><strong>知识点学习</strong><br />按章节浏览知识点并保存掌握进度。
+    </td>
+    <td>
+      <img src="docs/Resources/07-simulate-review.png" alt="考试答案回顾" />
+      <br /><strong>考试回顾</strong><br />集中查看答案、解析与错题，并将错题归入学习项目。
+    </td>
+  </tr>
+</table>
+
+## 模型服务
+
+首次启动且没有可用配置时，ReciteHelper 会显示模型服务选择窗口。
+
+| 方案 | 需要准备 | 特点 |
+| --- | --- | --- |
+| DeepSeek + Qwen | DeepSeek Key 与 Qwen Key | 分别直连文本生成和向量服务，通常响应更快 |
+| OpenRouter | 一个 OpenRouter Key | 配置简单；聊天和 embedding 统一调用，可能稍慢 |
+| 一站式服务 | ReciteHelper 激活码 | 无需管理第三方 API Key，由服务端提供模型能力 |
+
+API Key 默认保存在本机 `Config.xml`，也支持通过环境变量引用。使用 AI 功能时，相关文本会发送给你所选择的模型服务；项目文件与向量知识库仍保存在本地。
 
 ## 快速开始
 
-### 普通用户
-1. 前往 [Releases](https://github.com/ArabidopsisDev/ReciteHelper/releases) 下载最新版本。
-2. 解压并运行 `ReciteHelper.exe`。
-3. 在 `Config.xml` 中配置 DeepSeek API Key；使用知识库向量检索还需配置 Qwen API Key。两者均支持从环境变量读取。
-4. 导入文字型 PDF，或使用文件合并工具整理多份资料，创建 `.rhproj` 学习项目。
+1. 从 [Releases](https://github.com/OpenRecite/ReciteHelper/releases) 下载最新版本。
+2. 解压后运行 `ReciteHelper.exe`。
+3. 在首次启动窗口中选择一种模型服务并完成配置。
+4. 导入文字型 PDF，或先将 DOCX、PPTX、PDF、TXT 等资料合并为 `.meg` 文件，然后创建 `.rhproj` 学习项目。
 
-详细的配置和使用方法请参阅[中文用户手册](docs/manual-cn.md)。
+更完整的导入、配置与使用方法请阅读[中文用户手册](docs/manual-cn.md)。
 
-### 开发者构建
-1. 安装 [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) 和支持 WPF 开发的 Visual Studio 或 JetBrains Rider。
-2. 本项目包含 Git 子模块，请递归克隆仓库：
+## 从源码构建
 
-   ```bash
-   git clone --recurse-submodules https://github.com/ArabidopsisDev/ReciteHelper.git
-   ```
+需要 [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) 以及支持 WPF 的 Visual Studio 或 JetBrains Rider。
 
-   已经克隆仓库时，可补充初始化子模块：
+```powershell
+git clone --recurse-submodules https://github.com/OpenRecite/ReciteHelper.git
+cd ReciteHelper
+dotnet restore src/ReciteHelper.slnx
+dotnet build src/ReciteHelper.slnx --configuration Release
+dotnet run --project ReciteHelper.Wpf/ReciteHelper.Wpf.csproj
+```
 
-   ```bash
-   git submodule update --init --recursive
-   ```
-3. 使用 IDE 打开 `src/ReciteHelper.slnx`，或通过命令行运行新架构下的 WPF 启动项目：
+如果已经克隆但缺少子模块，请运行：
 
-   ```bash
-   dotnet restore src/ReciteHelper.slnx
-   dotnet run --project ReciteHelper.Wpf/ReciteHelper.Wpf.csproj
-   ```
+```powershell
+git submodule update --init --recursive
+```
 
----
+## 文档
 
-## 如何贡献
+| 文档 | 内容 |
+| --- | --- |
+| [中文用户手册](docs/manual-cn.md) | 安装、配置与完整功能说明 |
+| [English Manual](docs/manual-en.md) | English user guide |
 
-非常欢迎社区贡献者参与！您的贡献将被永久记录在项目 README 文件的特别感谢一栏中。只需要：
+## 参与贡献
 
-1. Fork 本仓库，创建新分支进行开发；
-2. 遵循现有代码风格，建议任何改动都配上适当的注释说明；
-3. 代码提交前请确保能正常运行并通过基本测试；
-4. 提 PR 前，请尽量关联 issue 或附带改动说明及截图（如有 UI 变更）；
-5. 对于文档、翻译、测试用例也同样欢迎补充！
+Issue、功能建议、代码、测试和翻译都很欢迎：
 
-开发/讨论可以通过 [Issues](https://github.com/ArabidopsisDev/ReciteHelper/issues) 区或邮箱反馈。
+1. Fork 仓库并从 `primary` 创建分支。
+2. 保持现有代码风格，并为行为变化补充必要说明。
+3. 提交前确认 Release 构建通过。
+4. 发起 Pull Request，并关联相关 Issue 或附上界面截图。
 
----
+参与前请阅读[行为准则](CODE_OF_CONDUCT.md)。讨论与反馈请前往 [Issues](https://github.com/OpenRecite/ReciteHelper/issues)，或发送邮件至 `arab@methodbox.top`。QQ 讨论群：`1053379975`。
 
 ## 许可证
 
-本项目采用 **GNU AGPL v3.0** 或更高版本许可证分发。  
-任何发布的衍生作品或者基于本项目进行的二次开发、SaaS 部署，均须共享完整源代码，并附带此协议原文说明。  
-协议详细内容请参阅 [LICENSE](LICENSE) 文件或访问 [GNU 官网](https://www.gnu.org/licenses/agpl-3.0.html)。
+ReciteHelper 采用 [GNU AGPL v3.0 或更高版本](LICENSE)发布。发布衍生作品或基于本项目提供网络服务时，请遵守许可证中的源码公开要求。
 
----
+## 致谢
 
-## 复习算法与研究论文
+感谢 Sati、Mrwhite3142、oife、AcE77505 以及所有贡献者对文件处理、兼容性和稳定性改进提供的帮助。
 
-|文档|说明|
-|:--:|:--|
-|[复习算法说明（中文）](docs/algorithm-cn.md)|面向用户的 FSRS-6 记忆模型原理、选题策略与个性化拟合说明|
-|[研究论文（PDF，英文）](docs/paper/ReciteHelper-FSRS-scheduler.pdf)|旧算法审计、模型推导、公开数据基准、闭环模拟与质量门|
-
----
-
-## 用户手册
-
-|语言|地址|
-|:--:|:--:|
-|中文（简体）|[中文用户手册](docs/manual-cn.md)|
-|English|[English Manual](docs/manual-en.md)|
-
----
-
-## 联系与反馈
-
-- GitHub： [https://github.com/ArabidopsisDev/ReciteHelper](https://github.com/ArabidopsisDev/ReciteHelper)
-- 邮箱：arab@methodbox.top
-- QQ讨论群：1053379975
-
-贡献前，请阅读[行为准则](CODE_OF_CONDUCT.md)。
-
-欢迎提出建议、Bug 反馈或功能需求，PR 与 Issue 都会及时处理！
-
----
-
-## 星标历史
-
-[![Star History Chart](https://api.star-history.com/svg?repos=ArabidopsisDev/ReciteHelper&type=date&legend=top-left)](https://www.star-history.com/)
-
----
-
-## 特别鸣谢
-
-衷心感谢以下成员为项目做出的卓越贡献，他们的付出是项目成功的关键：
-
-<div align="center">
-
-| 头像 | 学校或单位 | 昵称 | 贡献内容 |
-|:------:|:----------:|:-----:|------------|
-| <img src="docs\Resources\Thanks\01.jpg" width="60" height="60" style="border-radius:50%;border:2px solid #4fc3f7"> | 南昌航空航天大学 |  **Sati** | 帮助测试并解决了多PDF的处理问题 |
-| <img src="docs\Resources\Thanks\02.jpg" width="60" height="60" style="border-radius:50%;border:2px solid #55b74d"> | 海南大学 | **Mrwhite3142** | 帮助测试发现了文件无法正常处理的问题（暂未能复现） |
-| <img src="docs\Resources\Thanks\03.png" width="60" height="60" style="border-radius:50%;border:2px solid #ffb74d"> | / | **oife** | 帮助测试并解决了无法正常加载项目和测试代码未删除的问题 |
-| <img src="docs\Resources\Thanks\04.jpg" width="60" height="60" style="border-radius:50%;border:2px solid #aa274d"> | 中国民航大学 | **AcE77505** | 发现并为项目不支持部分旧版本 Windows 的问题提供了解决方案 |
-
-
-</div>
-
-<br>
-
-> “众人拾柴火焰高”——感谢每一位贡献者的热情参与和无私奉献，你们的每一行代码、每一次测试、每一份文档都让这个项目更加完善。期待未来继续携手同行，创造更多精彩！
-
-<br>
-<div align="center">
-<p style="color:#666;font-size:0.9em">
-感谢阅读 · 持续更新中 · 更多贡献者欢迎加入！
+<p align="center">
+  <img src="docs/Resources/Logos/clublogo.png" alt="Club logo" height="48" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/Resources/Logos/caylogo.png" alt="CAY logo" height="48" />
 </p>
-</div>
+
+<p align="center">
+  如果 ReciteHelper 对你有帮助，欢迎为项目点亮一个 Star。
+</p>
+
+[![Star History Chart](https://api.star-history.com/svg?repos=OpenRecite/ReciteHelper&type=date&legend=top-left)](https://www.star-history.com/#OpenRecite/ReciteHelper&type=date)

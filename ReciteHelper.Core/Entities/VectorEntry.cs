@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace ReciteHelper.Core.Entities;
 
@@ -16,6 +17,11 @@ public class VectorEntry
 
     public required string Text { get; set; }
     public required float[] Vector { get; set; }
+
+    [JsonPropertyName("embedding_model")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? EmbeddingModel { get; set; }
+
     public required string SourceFile { get; set; }
     public DateTime CreatedAt { get; set; }
 }

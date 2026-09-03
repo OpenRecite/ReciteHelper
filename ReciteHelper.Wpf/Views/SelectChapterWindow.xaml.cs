@@ -218,7 +218,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
 
         if (!HasTextGenerationAccess())
         {
-            MessageBox.Show("尚未配置 DeepSeek Key 或托管服务激活码，无法抽取套卷。请在 Config.xml 中配置 DeepSeekKey 或 HostedLicenseCode。", "无法导入", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("尚未配置 DeepSeek + Qwen、OpenRouter 或托管服务，无法抽取套卷。", "无法导入", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -279,7 +279,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
 
         if (!HasTextGenerationAccess())
         {
-            MessageBox.Show("尚未配置 DeepSeek Key 或托管服务激活码，无法从新资料中生成题目。请在 Config.xml 中配置 DeepSeekKey 或 HostedLicenseCode。", "无法导入", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("尚未配置 DeepSeek + Qwen、OpenRouter 或托管服务，无法从新资料中生成题目。", "无法导入", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -336,9 +336,7 @@ public partial class SelectChapterWindow : Window, INotifyPropertyChanged
 
     private static bool HasTextGenerationAccess()
     {
-        return !string.IsNullOrWhiteSpace(Config.Configure.DeepSeekKey) ||
-               !string.IsNullOrWhiteSpace(Config.Configure.HostedLicenseId) ||
-               !string.IsNullOrWhiteSpace(Config.Configure.HostedLicenseCode);
+        return ReciteHelper.Core.Configuration.ModelAccess.HasTextGeneration(Config.Configure);
     }
 
     private void SetExamImportState(bool isImporting)

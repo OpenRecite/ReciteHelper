@@ -28,6 +28,20 @@ public class FileVectorStore
         Save();
     }
 
+    public void ReplaceVectors(IReadOnlyList<float[]> vectors, string embeddingModel)
+    {
+        if (vectors.Count != _entries.Count)
+            throw new ArgumentException("向量数量与知识库条目数量不一致。", nameof(vectors));
+
+        for (var index = 0; index < _entries.Count; index++)
+        {
+            _entries[index].Vector = vectors[index];
+            _entries[index].EmbeddingModel = embeddingModel;
+        }
+
+        Save();
+    }
+
     public List<(VectorEntry Entry, float Score)> Search(float[] queryVector, int topK = 5)
     {
         return _entries

@@ -131,7 +131,7 @@ public sealed class HostedModelService(IConfigService configService)
         }
 
         if (string.IsNullOrWhiteSpace(config.HostedLicenseCode))
-            throw new InvalidOperationException("未配置 DeepSeek/Qwen Key，也未配置托管服务激活码。请配置 API Key，或在 Config.xml 中填写 HostedLicenseCode。");
+            throw new InvalidOperationException("未配置 DeepSeek + Qwen、OpenRouter，也未配置托管服务激活码。");
 
         var response = await PostAsync<HostedActivationResponse>(
             serviceUrl,

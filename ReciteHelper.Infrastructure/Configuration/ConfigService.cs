@@ -33,6 +33,7 @@ public class ConfigService : IConfigService
 
             config.DeepSeekKey = ResolveConfigText(config.DeepSeekKey);
             config.QwenKey = ResolveConfigText(config.QwenKey);
+            config.OpenRouterKey = ResolveConfigText(config.OpenRouterKey);
             return config;
         }
         catch (Exception ex)

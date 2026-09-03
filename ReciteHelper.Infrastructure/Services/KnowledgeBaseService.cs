@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using OpenAI.Embeddings;
+using ReciteHelper.Core.Configuration;
 using ReciteHelper.Core.ValueObjects;
 using ReciteHelper.Core.DTOs;
 
@@ -41,21 +42,30 @@ namespace ReciteHelper.Infrastructure.Services
 
             var cfg = await configService.LoadAsync();
             var src = new CancellationTokenSource();
+            _chatClient = null;
+            _embedClient = null;
 
-            if (!string.IsNullOrWhiteSpace(cfg.DeepSeekKey))
+            if (ModelAccess.Resolve(cfg) == ModelAccessMode.DeepSeekAndQwen)
             {
                 _chatClient = new OpenAIClient(new ApiKeyCredential(cfg.DeepSeekKey!), new OpenAIClientOptions
                 {
                     Endpoint = new Uri("https://api.deepseek.com")
                 }).GetChatClient("deepseek-v4-flash");
-            }
-
-            if (!string.IsNullOrWhiteSpace(cfg.QwenKey))
                 _embedClient = CreateQwenEmbeddingClient(cfg.QwenKey!);
+            }
+            else if (ModelAccess.Resolve(cfg) == ModelAccessMode.OpenRouter)
+            {
+                _chatClient = CreateOpenRouterChatClient(cfg);
+                _embedClient = CreateOpenRouterEmbeddingClient(cfg);
+            }
 
             var cluster = await ClusterAsync(slices, src.Token);
             var embed = await EmbedAsync(cluster, src.Token);
-            var elements = BuildVectorEntries(cluster, embed, src.Token);
+            var elements = BuildVectorEntries(
+                cluster,
+                embed,
+                src.Token,
+                ResolveEmbeddingModelId(cfg));
             var fvs = BuildVectorStore(projectPath, elements);
 
             return fvs;
@@ -71,9 +81,17 @@ namespace ReciteHelper.Infrastructure.Services
                 return [];
 
             var cfg = await configService.LoadAsync();
-            var queryVector = !string.IsNullOrWhiteSpace(cfg.QwenKey)
-                ? await GenerateQwenEmbeddingAsync(cfg.QwenKey, query.Trim(), cancellationToken)
-                : (await hostedModelService.EmbedTextsAsync([query.Trim()], cancellationToken))[0];
+            await EnsureCompatibleEmbeddingsAsync(store, cfg, cancellationToken);
+            var queryVector = ModelAccess.Resolve(cfg) switch
+            {
+                ModelAccessMode.DeepSeekAndQwen =>
+                    await GenerateEmbeddingAsync(CreateQwenEmbeddingClient(cfg.QwenKey!), query.Trim(), cancellationToken),
+                ModelAccessMode.OpenRouter =>
+                    await GenerateEmbeddingAsync(CreateOpenRouterEmbeddingClient(cfg), query.Trim(), cancellationToken),
+                ModelAccessMode.Hosted =>
+                    (await hostedModelService.EmbedTextsAsync([query.Trim()], cancellationToken))[0],
+                _ => throw new InvalidOperationException("尚未配置可用的模型服务。")
+            };
 
             return store.Search(queryVector, topK)
                 .Select(result => new KnowledgeBaseMatch(
@@ -96,10 +114,16 @@ namespace ReciteHelper.Infrastructure.Services
                 throw new ArgumentException("待向量化文本不能为空。", nameof(texts));
 
             var cfg = await configService.LoadAsync();
-            if (string.IsNullOrWhiteSpace(cfg.QwenKey))
+            var accessMode = ModelAccess.Resolve(cfg);
+            if (accessMode == ModelAccessMode.Hosted)
                 return await hostedModelService.EmbedTextsAsync(normalizedTexts, cancellationToken);
 
-            var embedClient = CreateQwenEmbeddingClient(cfg.QwenKey);
+            var embedClient = accessMode switch
+            {
+                ModelAccessMode.DeepSeekAndQwen => CreateQwenEmbeddingClient(cfg.QwenKey!),
+                ModelAccessMode.OpenRouter => CreateOpenRouterEmbeddingClient(cfg),
+                _ => throw new InvalidOperationException("尚未配置可用的模型服务。")
+            };
             var results = new float[normalizedTexts.Count][];
             var batches = normalizedTexts
                 .Select((text, index) => new { Text = text, Index = index })
@@ -140,17 +164,83 @@ namespace ReciteHelper.Infrastructure.Services
                 }).GetEmbeddingClient("text-embedding-v4");
         }
 
-        private static async Task<float[]> GenerateQwenEmbeddingAsync(
-            string qwenKey,
+        private static ChatClient CreateOpenRouterChatClient(ConfigOptions config)
+        {
+            var model = string.IsNullOrWhiteSpace(config.OpenRouterChatModel)
+                ? "deepseek/deepseek-v3.2"
+                : config.OpenRouterChatModel.Trim();
+
+            return new OpenAIClient(
+                new ApiKeyCredential(config.OpenRouterKey!),
+                new OpenAIClientOptions
+                {
+                    Endpoint = new Uri("https://openrouter.ai/api/v1")
+                }).GetChatClient(model);
+        }
+
+        private static EmbeddingClient CreateOpenRouterEmbeddingClient(ConfigOptions config)
+        {
+            return new OpenAIClient(
+                new ApiKeyCredential(config.OpenRouterKey!),
+                new OpenAIClientOptions
+                {
+                    Endpoint = new Uri("https://openrouter.ai/api/v1")
+                }).GetEmbeddingClient(ResolveOpenRouterEmbeddingModel(config));
+        }
+
+        private static async Task<float[]> GenerateEmbeddingAsync(
+            EmbeddingClient embedClient,
             string text,
             CancellationToken cancellationToken)
         {
-            var embedClient = CreateQwenEmbeddingClient(qwenKey);
             var response = await embedClient.GenerateEmbeddingsAsync(
                 [text],
                 options: null,
                 cancellationToken);
             return response.Value[0].ToFloats().ToArray();
+        }
+
+        private async Task EnsureCompatibleEmbeddingsAsync(
+            FileVectorStore store,
+            ConfigOptions config,
+            CancellationToken cancellationToken)
+        {
+            var currentModel = ResolveEmbeddingModelId(config);
+            var storedModel = store.Entries
+                .Select(entry => entry.EmbeddingModel)
+                .FirstOrDefault(model => !string.IsNullOrWhiteSpace(model));
+
+            var isLegacyStore = string.IsNullOrWhiteSpace(storedModel);
+            var switchingLegacyStoreToOpenRouter =
+                isLegacyStore && ModelAccess.Resolve(config) == ModelAccessMode.OpenRouter;
+            var changedKnownModel =
+                !isLegacyStore && !string.Equals(storedModel, currentModel, StringComparison.OrdinalIgnoreCase);
+
+            if (!switchingLegacyStoreToOpenRouter && !changedKnownModel)
+                return;
+
+            var vectors = await EmbedTextsAsync(
+                store.Entries.Select(entry => entry.Text).ToList(),
+                cancellationToken);
+            store.ReplaceVectors(vectors, currentModel);
+        }
+
+        private static string ResolveEmbeddingModelId(ConfigOptions config)
+        {
+            return ModelAccess.Resolve(config) switch
+            {
+                ModelAccessMode.DeepSeekAndQwen => "dashscope/text-embedding-v4",
+                ModelAccessMode.OpenRouter => $"openrouter/{ResolveOpenRouterEmbeddingModel(config)}",
+                ModelAccessMode.Hosted => "recitehelper/hosted",
+                _ => "unconfigured"
+            };
+        }
+
+        private static string ResolveOpenRouterEmbeddingModel(ConfigOptions config)
+        {
+            return string.IsNullOrWhiteSpace(config.OpenRouterEmbeddingModel)
+                ? "baai/bge-m3"
+                : config.OpenRouterEmbeddingModel.Trim();
         }
 
         private static string CreateMatchTitle(VectorEntry entry)
@@ -518,7 +608,8 @@ namespace ReciteHelper.Infrastructure.Services
         public List<VectorEntry> BuildVectorEntries(
             Dictionary<Semantics, string> semanticChunks,
             Dictionary<Semantics, float[]> vectors,
-            CancellationToken cts)
+            CancellationToken cts,
+            string? embeddingModel = null)
         {
             var entries = semanticChunks
                 .Select((kvp, idx) => new VectorEntry
@@ -532,6 +623,7 @@ namespace ReciteHelper.Infrastructure.Services
                     },
                     Text = kvp.Value,
                     Vector = vectors[kvp.Key],
+                    EmbeddingModel = embeddingModel,
                     SourceFile = "question-bank",
                     CreatedAt = DateTime.UtcNow
                 })

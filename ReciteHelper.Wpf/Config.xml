@@ -4,6 +4,9 @@
 
 	<DeepSeekKey></DeepSeekKey>
 	<QwenKey></QwenKey>
+	<OpenRouterKey></OpenRouterKey>
+	<OpenRouterChatModel>deepseek/deepseek-v3.2</OpenRouterChatModel>
+	<OpenRouterEmbeddingModel>baai/bge-m3</OpenRouterEmbeddingModel>
 	<ResourceCenterServerUrl>http://47.250.181.152:5000</ResourceCenterServerUrl>
 	<HostedServiceUrl></HostedServiceUrl>
 	<HostedLicenseCode></HostedLicenseCode>

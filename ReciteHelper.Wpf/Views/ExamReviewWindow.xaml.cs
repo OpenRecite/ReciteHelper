@@ -176,7 +176,7 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
 
         if (!HasTextGenerationAccess())
         {
-            MessageBox.Show("尚未配置 DeepSeek Key 或托管服务激活码，无法把错题归并到已有章节。请在 Config.xml 中配置 DeepSeekKey 或 HostedLicenseCode。", "无法导入", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("尚未配置 DeepSeek + Qwen、OpenRouter 或托管服务，无法把错题归并到已有章节。", "无法导入", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -237,9 +237,7 @@ public partial class ExamReviewWindow : Window, INotifyPropertyChanged
 
     private static bool HasTextGenerationAccess()
     {
-        return !string.IsNullOrWhiteSpace(Config.Configure.DeepSeekKey) ||
-               !string.IsNullOrWhiteSpace(Config.Configure.HostedLicenseId) ||
-               !string.IsNullOrWhiteSpace(Config.Configure.HostedLicenseCode);
+        return ReciteHelper.Core.Configuration.ModelAccess.HasTextGeneration(Config.Configure);
     }
 
     private bool CanImportWrongQuestions()

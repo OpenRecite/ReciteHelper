@@ -1,3 +1,5 @@
+using ReciteHelper.Core.Configuration;
+using ReciteHelper.Core.Interfaces.Configuration;
 using ReciteHelper.Infrastructure.Services;
 using System.Diagnostics;
 using System.IO;
@@ -9,13 +11,103 @@ namespace ReciteHelper.Wpf.Views;
 public partial class ActivationWindow : Window
 {
     private readonly HostedModelService _hostedModelService;
+    private readonly IConfigService _configService;
     private readonly string _configPath;
 
-    public ActivationWindow(HostedModelService hostedModelService)
+    public ActivationWindow(
+        HostedModelService hostedModelService,
+        IConfigService configService)
     {
         _hostedModelService = hostedModelService;
+        _configService = configService;
         _configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config.xml");
         InitializeComponent();
+    }
+
+    private async void SaveDirectKeysButton_Click(object sender, RoutedEventArgs e)
+    {
+        var deepSeekKey = DeepSeekKeyBox.Password.Trim();
+        var qwenKey = QwenKeyBox.Password.Trim();
+        if (string.IsNullOrWhiteSpace(deepSeekKey) || string.IsNullOrWhiteSpace(qwenKey))
+        {
+            ShowError("直连方案需要同时填写 DeepSeek 与 Qwen API Key。");
+            return;
+        }
+
+        try
+        {
+            var config = await LoadConfigAsync();
+            config.DeepSeekKey = deepSeekKey;
+            config.QwenKey = qwenKey;
+            await _configService.SaveAsync(config);
+            Complete("DeepSeek + Qwen 配置已保存。");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"保存配置失败：{ex.Message}");
+        }
+    }
+
+    private async void SaveOpenRouterButton_Click(object sender, RoutedEventArgs e)
+    {
+        var openRouterKey = OpenRouterKeyBox.Password.Trim();
+        if (string.IsNullOrWhiteSpace(openRouterKey))
+        {
+            ShowError("请输入 OpenRouter API Key。");
+            return;
+        }
+
+        try
+        {
+            var config = await LoadConfigAsync();
+            config.OpenRouterKey = openRouterKey;
+            if (string.IsNullOrWhiteSpace(config.OpenRouterChatModel))
+                config.OpenRouterChatModel = "deepseek/deepseek-v3.2";
+            if (string.IsNullOrWhiteSpace(config.OpenRouterEmbeddingModel))
+                config.OpenRouterEmbeddingModel = "baai/bge-m3";
+
+            await _configService.SaveAsync(config);
+            Complete("OpenRouter 配置已保存。");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"保存配置失败：{ex.Message}");
+        }
+    }
+
+    private async void ActivateButton_Click(object sender, RoutedEventArgs e)
+    {
+        var code = ActivationCodeTextBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            ShowError("请输入激活码。");
+            return;
+        }
+
+        ActivateButton.IsEnabled = false;
+        ShowStatus("正在验证激活码...", Brushes.DimGray);
+
+        try
+        {
+            var result = await _hostedModelService.ActivateAsync(code);
+            if (!result.IsValid)
+            {
+                ShowError(string.IsNullOrWhiteSpace(result.Message)
+                    ? "激活失败，请检查激活码或服务连接。"
+                    : $"激活失败：{result.Message}");
+                return;
+            }
+
+            Complete($"激活成功，剩余额度：{FormatQuota(result.QuotaRemaining)}。");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"激活失败：{ex.Message}");
+        }
+        finally
+        {
+            ActivateButton.IsEnabled = true;
+        }
     }
 
     private void OpenConfigButton_Click(object sender, RoutedEventArgs e)
@@ -28,62 +120,29 @@ public partial class ActivationWindow : Window
                 FileName = _configPath,
                 UseShellExecute = true
             });
-            StatusText.Foreground = Brushes.ForestGreen;
-            StatusText.Text = "已打开 Config.xml。请填写 DeepSeekKey 和 QwenKey，保存后重新启动软件。";
+            ShowStatus("已打开 Config.xml；修改保存后请重新启动软件。", Brushes.ForestGreen);
         }
         catch (Exception ex)
         {
-            StatusText.Foreground = Brushes.Firebrick;
-            StatusText.Text = $"无法打开配置文件：{ex.Message}";
-        }
-    }
-
-    private async void ActivateButton_Click(object sender, RoutedEventArgs e)
-    {
-        var code = ActivationCodeTextBox.Text.Trim();
-        if (string.IsNullOrWhiteSpace(code))
-        {
-            StatusText.Foreground = Brushes.Firebrick;
-            StatusText.Text = "请输入激活码。";
-            MessageBox.Show(
-                "请先输入你获得的激活码，然后再点击“立即激活”。",
-                "需要激活码",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-            return;
-        }
-
-        ActivateButton.IsEnabled = false;
-        StatusText.Foreground = Brushes.DimGray;
-        StatusText.Text = "正在验证激活码...";
-
-        try
-        {
-            var result = await _hostedModelService.ActivateAsync(code);
-            if (!result.IsValid)
-            {
-                ShowActivationFailed(result.Message);
-                return;
-            }
-
-            ShowActivationSucceeded(result);
-            DialogResult = true;
-            Close();
-        }
-        catch (Exception ex)
-        {
-            ShowActivationFailed(ex.Message);
-        }
-        finally
-        {
-            ActivateButton.IsEnabled = true;
+            ShowError($"无法打开配置文件：{ex.Message}");
         }
     }
 
     private void ExitButton_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = false;
-        Close();
+    }
+
+    private async Task<ConfigOptions> LoadConfigAsync()
+    {
+        try
+        {
+            return await _configService.LoadAsync();
+        }
+        catch
+        {
+            return new ConfigOptions();
+        }
     }
 
     private void EnsureConfigFile()
@@ -98,6 +157,9 @@ public partial class ActivationWindow : Window
               <Version>v3</Version>
               <DeepSeekKey></DeepSeekKey>
               <QwenKey></QwenKey>
+              <OpenRouterKey></OpenRouterKey>
+              <OpenRouterChatModel>deepseek/deepseek-v3.2</OpenRouterChatModel>
+              <OpenRouterEmbeddingModel>baai/bge-m3</OpenRouterEmbeddingModel>
               <ResourceCenterServerUrl>http://localhost:5000</ResourceCenterServerUrl>
               <HostedServiceUrl></HostedServiceUrl>
               <HostedLicenseCode></HostedLicenseCode>
@@ -107,55 +169,21 @@ public partial class ActivationWindow : Window
             """);
     }
 
-    private void ShowActivationSucceeded(HostedLicenseStatus result)
+    private void Complete(string message)
     {
-        StatusText.Foreground = Brushes.ForestGreen;
-        StatusText.Text = $"激活成功。剩余额度：{FormatQuota(result.QuotaRemaining)}。";
-
-        MessageBox.Show(
-            BuildSuccessMessage(result),
-            "激活成功",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        ShowStatus(message, Brushes.ForestGreen);
+        DialogResult = true;
     }
 
-    private void ShowActivationFailed(string detail)
+    private void ShowError(string message)
     {
-        StatusText.Foreground = Brushes.Firebrick;
-        StatusText.Text = "激活失败，请检查激活码或服务连接。";
-
-        MessageBox.Show(
-            BuildFailureMessage(detail),
-            "激活失败",
-            MessageBoxButton.OK,
-            MessageBoxImage.Warning);
+        ShowStatus(message, Brushes.Firebrick);
     }
 
-    private static string BuildSuccessMessage(HostedLicenseStatus result)
+    private void ShowStatus(string message, Brush color)
     {
-        var expiresAt = result.ExpiresAtUtc is null
-            ? "未设置到期时间"
-            : result.ExpiresAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-
-        return
-            "激活已完成，可以开始使用一站式服务。\n\n" +
-            $"剩余额度：{FormatQuota(result.QuotaRemaining)}\n" +
-            $"有效期至：{expiresAt}\n\n" +
-            "后续内容提取、题目生成和知识库向量生成将自动通过服务端完成。";
-    }
-
-    private static string BuildFailureMessage(string detail)
-    {
-        var cleanDetail = string.IsNullOrWhiteSpace(detail)
-            ? "服务端未返回具体错误。"
-            : detail.Trim();
-
-        return
-            "未能完成激活，请按下面顺序检查：\n\n" +
-            "1. 激活码是否输入完整，是否已经被其他设备使用。\n" +
-            "2. 当前网络是否可以访问配置中的资源中心/托管服务地址。\n" +
-            "3. 如果你刚修改过 Config.xml，请保存后重新启动软件。\n\n" +
-            $"详细信息：{cleanDetail}";
+        StatusText.Foreground = color;
+        StatusText.Text = message;
     }
 
     private static string FormatQuota(int quotaRemaining)

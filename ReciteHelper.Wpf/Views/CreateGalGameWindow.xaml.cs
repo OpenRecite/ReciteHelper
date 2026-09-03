@@ -80,7 +80,7 @@ public partial class CreateGalGameWindow : Window, INotifyPropertyChanged
 
         if (!HasTextGenerationAccess())
         {
-            MessageBox.Show("尚未配置 DeepSeek Key 或托管服务激活码，无法创建游戏项目。请在 Config.xml 中配置 DeepSeekKey 或 HostedLicenseCode。", "尚未配置模型服务",
+            MessageBox.Show("尚未配置 DeepSeek + Qwen、OpenRouter 或托管服务，无法创建游戏项目。", "尚未配置模型服务",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -112,9 +112,7 @@ public partial class CreateGalGameWindow : Window, INotifyPropertyChanged
 
     private static bool HasTextGenerationAccess()
     {
-        return !string.IsNullOrWhiteSpace(Config.Configure?.DeepSeekKey) ||
-               !string.IsNullOrWhiteSpace(Config.Configure?.HostedLicenseId) ||
-               !string.IsNullOrWhiteSpace(Config.Configure?.HostedLicenseCode);
+        return ReciteHelper.Core.Configuration.ModelAccess.HasTextGeneration(Config.Configure);
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e)

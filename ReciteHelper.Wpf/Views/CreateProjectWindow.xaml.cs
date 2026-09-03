@@ -188,7 +188,7 @@ public partial class CreateProjectWindow : Window
         var questionBankPaths = GetQuestionBankPaths();
         if (!HasTextGenerationAccess())
         {
-            MessageBox.Show("创建项目需要 DeepSeek Key，或输入托管服务激活码。请在 Config.xml 中配置 DeepSeekKey 或 HostedLicenseCode。", "尚未配置模型服务",
+            MessageBox.Show("创建项目需要 DeepSeek + Qwen、OpenRouter，或托管服务激活码。请先完成模型服务配置。", "尚未配置模型服务",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -238,9 +238,7 @@ public partial class CreateProjectWindow : Window
 
     private static bool HasTextGenerationAccess()
     {
-        return !string.IsNullOrWhiteSpace(Config.Configure?.DeepSeekKey) ||
-               !string.IsNullOrWhiteSpace(Config.Configure?.HostedLicenseId) ||
-               !string.IsNullOrWhiteSpace(Config.Configure?.HostedLicenseCode);
+        return ReciteHelper.Core.Configuration.ModelAccess.HasTextGeneration(Config.Configure);
     }
 
     private static void UpdateProgress(ProgressWindow progressWindow, ProjectCreationProgress progress)
